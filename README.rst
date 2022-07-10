@@ -1,25 +1,29 @@
-sdoml dataset
+SDOML dataset
 ---------------------
 
-SDOML is an open-source package for working with the SDOML Dataset (sdoml.org).
+SDOML is an open-source package for working with the SDOML Dataset (`sdoml.org <https://sdoml.org>`_).
 
 Installation
-____________
+------------
 
 If you'd like to help develop the SDOML package, or just want to try out the package, you will need to install it from GitHub. The best way to do this is to create a new python virtual environment (either with pipenv or conda). Once you have that virtual environment:
 
-```
-$ git clone https://github.com/sunpy/sunkit-image.git
-$ cd sunkit-dem
-$ pip install -e .
-```
+.. code:: bash
 
-To install the optional extras required for testing, this can be performed with pip as below (for `bash`, and `zsh`)
+  $ git clone https://https://github.com/PaulJWright/sdoml.git
+  $ cd sdoml
+  $ pip install -e .
 
-```
-$ pip install -e .[test]
 
-➜  ~ pip install -e '.[test]'
+To install the optional extras required for testing, this can be performed with pip as below (for ``bash``, and ``zsh``)
+
+.. code:: bash
+
+  $ pip install -e .[test]
+
+.. code:: zsh
+
+  ~ pip install -e '.[test]'
 
 
 License
