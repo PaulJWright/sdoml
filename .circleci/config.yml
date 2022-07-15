@@ -34,8 +34,8 @@ jobs:
           name: pre-commit_install
           command: pre-commit install
       - run:
-          name: pre-commit_install
-          command: pre-commit install
+          name: test
+          command: pre-commit --version
       - run:
           name: code_check_and_linting
           # This assumes pytest is installed via the install-package step above
