@@ -27,15 +27,13 @@ jobs:
     # CircleCI will report the results back to your VCS provider.
     steps:
       - checkout
-      - run:
-          name: install_package
-          command: python3 -m pip install -e .[test]
-      - run:
-          name: pre-commit_install
-          command: pre-commit install
-      - run:
-          name: test
-          command: pre-commit --version
+      # - run:
+      #     name: install_package
+      #     command: python3 -m pip install -e .[test]
+      - python/install-packages:
+          pkg-manager: pip
+          app-dir: .circleci/ # If you're requirements.txt isn't in the root directory.
+          pip-dependency-file: requirements-cicd.txt
       - run:
           name: code_check_and_linting
           # This assumes pytest is installed via the install-package step above
