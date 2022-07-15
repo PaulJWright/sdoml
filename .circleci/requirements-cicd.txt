@@ -1,4 +1,4 @@
--e .
+-e ../.
 torch>=1.8.0
 pytest
 pytest-doctestplus
