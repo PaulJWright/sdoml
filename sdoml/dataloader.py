@@ -23,11 +23,11 @@ class SDOMLDataset(Dataset):
 
     zarr_root : str, optional
         Location of the root ``.zarr`` file within the ``storage_location``.
-        By default this is ``fdl-sdoml-v2/sdomlv2_small.zarr/`` (which is 
+        By default this is ``fdl-sdoml-v2/sdomlv2_small.zarr/`` (which is
         located at ``storage_location`` == ``gcs``.
 
     cache_max_size: int, Nonetype, optional
-        The maximum size that the ``zarr`` cache may grow to, 
+        The maximum size that the ``zarr`` cache may grow to,
         in number of bytes. If ``None`` the cache will have unlimited size.
     """
 
