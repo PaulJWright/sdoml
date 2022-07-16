@@ -38,8 +38,6 @@ class SDOMLDataset(Dataset):
         cache_max_size: int = 1 * 1024 * 1024 * 2048,
     ):
 
-        print(cache_max_size)
-
         if storage_location == "gcs":
             import gcsfs
 
