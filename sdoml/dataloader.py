@@ -1,11 +1,42 @@
-from torch.utils.data import DataLoader, Dataset, random_split
-import zarr
-import logging
 import sys
+import timeit
 
-# -- Set up loogging
+import logging
+import zarr
+import torch
+
+import dask.array as da
+import numpy as np
+
+from collections import defaultdict
+from torch.utils.data import DataLoader, Dataset
+from typing import List, Set, Dict, Tuple, Optional
+
+# -- Setting up logging
 logger = logging.getLogger(__name__)
 logging.getLogger("sdoml").addHandler(logging.NullHandler())
+
+
+def is_str_list(val: List[object]):  # -> Boolean():
+    """Determines whether all objects in the list are strings"""
+    return all(isinstance(x, str) for x in val)
+
+
+def get_minvalue(inputlist):
+
+    # get the minimum value in the list
+    min_value = min(inputlist)
+
+    # return the index of minimum value
+    min_index = inputlist.index(min_value)
+    return min_value, min_index
+
+
+def common_entries(*dcts):
+    if not dcts:
+        return
+    for i in set(dcts[0]).intersection(*dcts[1:]):
+        yield (i,) + tuple(d[i] for d in dcts)
 
 
 class SDOMLDataset(Dataset):
@@ -24,18 +55,43 @@ class SDOMLDataset(Dataset):
     zarr_root : str, optional
         Location of the root ``.zarr`` file within the ``storage_location``.
         By default this is ``fdl-sdoml-v2/sdomlv2_small.zarr/`` (which is
-        located at ``storage_location`` == ``gcs``.
+        located on Google Cloud Storage ``storage_location == gcs``).
 
     cache_max_size: int, Nonetype, optional
         The maximum size that the ``zarr`` cache may grow to,
-        in number of bytes. If ``None`` the cache will have unlimited size.
+        in number of bytes. By default this variable is 1 * 512 * 512 * 2048.
+        If the variable is set to ``None``, the cache will have unlimited size.
+        see https://zarr.readthedocs.io/en/stable/api/storage.html#zarr.storage.LRUStoreCache
+
+    years: List[str], Nonetype, optional
+        A list of years (from 2010 to present) to include. By default this
+        variable is ``None`` which will return all years.
+
+    channels: List[str], Nonetype, optional
+        A list of SDO/AIA channels to include from
+        ["94A", "131A", "211A", "304A", "335A", "1600A", "1700A"].
+        By default this variable is ``None``, and will return all channels.
+
+    required_keys: List[str], optional
+        A list of metadata keys to include. By default this variable includes
+        ["T_OBS", "EXPTIME",  "WAVELNTH", "WAVEUNIT", "DEG_COR"].
+
     """
 
     def __init__(
         self,
         storage_location: str = "gcs",
         zarr_root: str = "fdl-sdoml-v2/sdomlv2_small.zarr/",
-        cache_max_size: int = 1 * 1024 * 1024 * 2048,
+        cache_max_size: Optional[int] = 1 * 512 * 512 * 2048,
+        years: Optional[List[str]] = None,
+        channels: Optional[List[str]] = None,
+        required_keys: Optional[List[str]] = [
+            "T_OBS",
+            "EXPTIME",
+            "WAVELNTH",
+            "WAVEUNIT",
+            "DEG_COR",
+        ],
     ):
 
         if storage_location == "gcs":
@@ -49,14 +105,81 @@ class SDOMLDataset(Dataset):
         else:
             raise NotImplementedError
 
+        # !TODO understand if we need to cache this...
         cache = zarr.LRUStoreCache(store, max_size=cache_max_size)
         self.root = zarr.open(store=cache, mode="r")
 
+        if years is not None:
+            if is_str_list(channels):
+                # TODO this can return None
+                by_year = [self.root.get(y) for y in years]
+            else:
+                raise ValueError()
+        else:
+            by_year = [group for _, group in self.root.groups()]
+
+        if channels is not None:
+            if is_str_list(channels):
+                data = [
+                    group.get(channel)
+                    for group in by_year
+                    for channel in channels
+                ]
+            else:
+                raise ValueError()
+        else:
+            data = [g for y in by_year for _, g in y.arrays()]
+
+        # one channel may have less images than another
+        self._min_val, self._min_index = get_minvalue(
+            [d.shape[0] for d in data]
+        )
+        # For now, setting this to 15
+        # because of different lengths of arrays in the data
+        # !TODO fix this bug.
+        self._min_val = 15
+        #
+
+        images = []
+        # -- Obtain the data
+        # --
+        for zarray in data:
+            zarr_imgs = da.from_array(zarray)[0 : self._min_val - 1]
+
+            # append
+            images.append(zarr_imgs)
+        self.all_images = da.stack(images, axis=1)
+
+        # -- Obtain the keys in a similar format
+        # !TODO Figure out a better way of doing this
+        att_arr = []
+        for j in range(self._min_val):
+            # create an empty dictionary
+            dnr = {k: [] for k in required_keys}
+            for zarray in data:
+                # fill dictionary with keys from each channel of data
+                [dnr[k].append(zarray.attrs[k][j]) for k in required_keys]
+            # append the observation-time dictionary to the final array
+            att_arr.append(dnr)
+        self.attrs = att_arr
+
+        self.data_len = len(self.all_images)
+        logging.info(f"There are {len(self.all_images)} observations")
+
     def __len__(self):
-        pass
+        return self.data_len
 
     def __getitem__(self, idx):
-        pass
+        try:
+            # obtain shape of [idx, channels, dim_1, dim_2]
+            item = torch.from_numpy(
+                np.array(self.all_images[idx, :, :, :])
+            ).unsqueeze(dim=0)
+            meta = self.attrs[idx]
+            return item, meta
+
+        except Exception as error:
+            logging.error(error)
 
 
 if __name__ == "__main__":
@@ -67,12 +190,22 @@ if __name__ == "__main__":
         stream=sys.stdout,
     )
 
-    sdomldl = SDOMLDataset(
+    sdomlds = SDOMLDataset(
         storage_location="gcs",
         zarr_root="fdl-sdoml-v2/sdomlv2_small.zarr/",
         cache_max_size=None,
+        years=["2010"],
+        channels=["131A", "193A"],
     )
 
     logging.info(
-        f"The `.zarr` directory structure is: \n {sdomldl.root.tree()}"
+        f"The `.zarr` directory structure is: \n {sdomlds.root.tree()}"
+    )
+
+    logging.info(f"Dataset length, ``sdomlds.__len__()``: {sdomlds.__len__()}")
+    logging.info(
+        f"``Shape of a single item: sdomlds.__getitem__(0)[0].shape``: {sdomlds.__getitem__(0)[0].shape}"
+    )
+    logging.info(
+        f"``Number of keys: len(sdomlds.__getitem__(0)[1])``: {len(sdomlds.__getitem__(0)[1])}"
     )
