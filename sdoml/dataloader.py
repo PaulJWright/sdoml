@@ -198,7 +198,7 @@ class SDOMLDataset(Dataset):
 
     def _get_cotemporal_data(
         self,
-        selected_times: pd.date_range(),
+        selected_times: pd.date_range,
         timedelta: str = "3m",
     ) -> pd.DataFrame():
         """
