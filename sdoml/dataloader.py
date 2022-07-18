@@ -169,12 +169,16 @@ class SDOMLDataset(Dataset):
         # -- Obtain the image keys in a similar format
         # !TODO Figure out a better way of doing this
         att_arr = []
-        for j in range(self._min_val):
+        for j, _ in enumerate(zarr_imgs):
             # create an empty dictionary
             dnr = {k: [] for k in required_keys}
             for zarray in self.data:
+                name = str(zarray).split("/")[2].split("'")[0]
                 # fill dictionary with keys from each channel of data
-                [dnr[k].append(zarray.attrs[k][j]) for k in required_keys]
+                [
+                    dnr[k].append(zarray.attrs[k][df[name][j]])
+                    for k in required_keys
+                ]
             # append the observation-time dictionary to the final array
             att_arr.append(dnr)
         self.attrs = att_arr
