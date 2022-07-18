@@ -184,6 +184,8 @@ class SDOMLDataset(Dataset):
                 list(df[get_aia_channel_name(zarray)].to_numpy())
             ]
             images.append(zarr_imgs)
+
+        # all images are stored in ``self.all_images``
         self.all_images = da.stack(images, axis=1)
 
         # -- Obtain the image keys in a similar format
@@ -205,6 +207,7 @@ class SDOMLDataset(Dataset):
             # append the observation-time dictionary to the final array
             att_arr.append(dnr)
 
+        # all metadata is stored in ``self.attrs``
         self.attrs = att_arr
         self.data_len = len(self.all_images)
 
