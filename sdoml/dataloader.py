@@ -94,7 +94,7 @@ class SDOMLDataset(Dataset):
         years: Optional[List[str]] = None,
         instruments: Optional[List[str]] = ["AIA"],
         channels: Optional[List[str]] = None,
-        required_keys: Optional[List[str]] = None, 
+        required_keys: Optional[List[str]] = None,
         # [
         #     "T_OBS",
         #     "EXPTIME",
@@ -103,14 +103,14 @@ class SDOMLDataset(Dataset):
         #     "DEG_COR",
         # ],
         selected_times=None,
-        ):
+    ):
 
         if len(instruments) != 1 and instruments[0] != "AIA":
             raise ValueError()
 
         # if channels is not None:
         #     for channel in channels:
-                
+
         #     self.channels
         # else:
         #     self.channels = None
