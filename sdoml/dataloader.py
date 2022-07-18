@@ -63,6 +63,15 @@ class SDOMLDataset(Dataset):
         A list of years (from 2010 to present) to include. By default this
         variable is ``None`` which will return all years.
 
+    instruments: List[str], optional
+        A list of instruments to include. By default this
+        variable is ``[``AIA``]`` which will provide data for AIA.
+
+        Options :
+            - ``AIA`` : SDO Atomospheric Imaging Assembly
+            - ``HMI`` : SDO Helioseismic and Magnetic Imager
+            - ``EVE`` : Extreme UltraViolet Variability Experiment
+
     channels: List[str], Nonetype, optional
         A list of SDO/AIA channels to include from
         ["94A", "131A", "211A", "304A", "335A", "1600A", "1700A"].
@@ -83,16 +92,28 @@ class SDOMLDataset(Dataset):
         zarr_root: str = "fdl-sdoml-v2/sdomlv2_small.zarr/",
         cache_max_size: Optional[int] = 1 * 512 * 512 * 2048,
         years: Optional[List[str]] = None,
+        instruments: Optional[List[str]] = ["AIA"],
         channels: Optional[List[str]] = None,
-        required_keys: Optional[List[str]] = [
-            "T_OBS",
-            "EXPTIME",
-            "WAVELNTH",
-            "WAVEUNIT",
-            "DEG_COR",
-        ],
+        required_keys: Optional[List[str]] = None, 
+        # [
+        #     "T_OBS",
+        #     "EXPTIME",
+        #     "WAVELNTH",
+        #     "WAVEUNIT",
+        #     "DEG_COR",
+        # ],
         selected_times=None,
-    ):
+        ):
+
+        if len(instruments) != 1 and instruments[0] != "AIA":
+            raise ValueError()
+
+        # if channels is not None:
+        #     for channel in channels:
+                
+        #     self.channels
+        # else:
+        #     self.channels = None
 
         if storage_location == "gcs":
             import gcsfs
@@ -109,6 +130,7 @@ class SDOMLDataset(Dataset):
         cache = zarr.LRUStoreCache(store, max_size=cache_max_size)
         self.root = zarr.open(store=cache, mode="r")
 
+        # Reduce data based on years
         if years is not None:
             if is_str_list(channels):
                 # TODO this can return None
@@ -118,6 +140,7 @@ class SDOMLDataset(Dataset):
         else:
             by_year = [group for _, group in self.root.groups()]
 
+        # Reduce data based on channels
         if channels is not None:
             if is_str_list(channels):
                 self.data = [
@@ -130,7 +153,7 @@ class SDOMLDataset(Dataset):
         else:
             self.data = [g for y in by_year for _, g in y.arrays()]
 
-        # one channel may have less images than another
+        # one of the selected channels may have less images than another
         self._min_val, self._min_index = get_minvalue(
             [d.shape[0] for d in self.data]
         )
@@ -154,15 +177,12 @@ class SDOMLDataset(Dataset):
         df = self._get_cotemporal_data(selected_times)
 
         # -- Obtain the image data
-        # --
+        #
         images = []
         for zarray in self.data:
             zarr_imgs = da.from_array(zarray)[
                 list(df[get_aia_channel_name(zarray)].to_numpy())
             ]
-            print(
-                f"zarray.shape, {zarray.shape} len zarr_imgs, {len(zarr_imgs)}"
-            )
             images.append(zarr_imgs)
         self.all_images = da.stack(images, axis=1)
 
@@ -171,6 +191,8 @@ class SDOMLDataset(Dataset):
         att_arr = []
         for j, _ in enumerate(zarr_imgs):
             # create an empty dictionary
+            if required_keys is None:
+                required_keys = list(self.data[0].attrs.keys())
             dnr = {k: [] for k in required_keys}
             for zarray in self.data:
                 # fill dictionary with keys from each channel of data
@@ -195,6 +217,12 @@ class SDOMLDataset(Dataset):
         else:
             msg = "Not cotemporal observations have the same shape"
             raise ValueError(msg)
+
+    def _get_images(self):
+        pass
+
+    def _get_meta(self):
+        pass
 
     def _get_cotemporal_data(
         self,
@@ -301,7 +329,7 @@ if __name__ == "__main__":
         zarr_root="fdl-sdoml-v2/sdomlv2_small.zarr/",
         cache_max_size=None,
         years=["2010"],
-        channels=["131A", "193A", "94A", "171A", "211A"],
+        channels=["94A", "131A", "171A", "193A"],
     )
 
     # -- Logging
