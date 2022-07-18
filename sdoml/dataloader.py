@@ -7,6 +7,7 @@ import torch
 
 import dask.array as da
 import numpy as np
+import pandas as pd
 
 from collections import defaultdict
 from torch.utils.data import DataLoader, Dataset
@@ -76,6 +77,9 @@ class SDOMLDataset(Dataset):
         A list of metadata keys to include. By default this variable includes
         ["T_OBS", "EXPTIME",  "WAVELNTH", "WAVEUNIT", "DEG_COR"].
 
+    selected_times: ...
+        ...
+
     """
 
     def __init__(
@@ -92,6 +96,7 @@ class SDOMLDataset(Dataset):
             "WAVEUNIT",
             "DEG_COR",
         ],
+        selected_times=None,
     ):
 
         if storage_location == "gcs":
@@ -120,7 +125,7 @@ class SDOMLDataset(Dataset):
 
         if channels is not None:
             if is_str_list(channels):
-                data = [
+                self.data = [
                     group.get(channel)
                     for group in by_year
                     for channel in channels
@@ -128,35 +133,46 @@ class SDOMLDataset(Dataset):
             else:
                 raise ValueError()
         else:
-            data = [g for y in by_year for _, g in y.arrays()]
+            self.data = [g for y in by_year for _, g in y.arrays()]
 
         # one channel may have less images than another
         self._min_val, self._min_index = get_minvalue(
-            [d.shape[0] for d in data]
+            [d.shape[0] for d in self.data]
         )
-        # For now, setting this to 15
-        # because of different lengths of arrays in the data
-        # !TODO fix this bug.
-        self._min_val = 15
-        #
+
+        if selected_times is None:
+            # take times from the array with the least number of obs.
+            t_obs_new = self.data[self._min_index].attrs["T_OBS"]
+
+            # set start/end as limits of sorted arrays, and take values
+            # at a frequency of 6 minutes
+            selected_times = pd.date_range(
+                start=sorted(t_obs_new)[0],
+                end=sorted(t_obs_new)[-1],
+                freq="6T",
+            )
+
+        df = self._get_cotemporal_data(selected_times)
 
         images = []
-        # -- Obtain the data
+        # -- Obtain the image data
         # --
-        for zarray in data:
-            zarr_imgs = da.from_array(zarray)[0 : self._min_val - 1]
-
-            # append
+        for zarray in self.data:
+            name = df[str(zarray).split("/")[2].split("'")[0]]
+            zarr_imgs = da.from_array(zarray)[list(name.to_numpy())]
+            print(
+                f"zarray.shape, {zarray.shape} len zarr_imgs, {len(zarr_imgs)}"
+            )
             images.append(zarr_imgs)
         self.all_images = da.stack(images, axis=1)
 
-        # -- Obtain the keys in a similar format
+        # -- Obtain the image keys in a similar format
         # !TODO Figure out a better way of doing this
         att_arr = []
         for j in range(self._min_val):
             # create an empty dictionary
             dnr = {k: [] for k in required_keys}
-            for zarray in data:
+            for zarray in self.data:
                 # fill dictionary with keys from each channel of data
                 [dnr[k].append(zarray.attrs[k][j]) for k in required_keys]
             # append the observation-time dictionary to the final array
@@ -165,6 +181,42 @@ class SDOMLDataset(Dataset):
 
         self.data_len = len(self.all_images)
         logging.info(f"There are {len(self.all_images)} observations")
+
+    def _get_cotemporal_data(self, selected_times):
+        """
+        Function to return co-temporal data across channels
+        """
+
+        # Initialise ``pd.Dataframe`` with
+        # the times we requre observations for
+        df = pd.DataFrame(
+            selected_times,
+            index=np.arange(np.shape(selected_times)[0]),
+            columns=["selected_times"],
+        )
+
+        # iterate through channels, finding
+        for i, channel in enumerate(self.data):
+            selected_index = []
+
+            pd_df = pd.to_datetime(self.data[i].attrs["T_OBS"])
+
+            for time in selected_times:
+                selected_index.append(np.argmin(abs(time - pd_df)))
+
+            missing_index = np.where(
+                np.abs(pd_df[selected_index] - selected_times)
+                > pd.Timedelta("3m")
+            )[0].tolist()
+            for midx in missing_index:
+                selected_index[midx] = pd.NA
+
+            name = str(channel).split("/")[2].split("'")[0]
+            df.insert(i + 1, name, selected_index)
+
+        df.dropna(inplace=True)
+
+        return df
 
     def __len__(self):
         return self.data_len
@@ -195,13 +247,13 @@ if __name__ == "__main__":
         zarr_root="fdl-sdoml-v2/sdomlv2_small.zarr/",
         cache_max_size=None,
         years=["2010"],
-        channels=["131A", "193A"],
+        channels=["131A", "193A", "94A", "171A", "211A"],
     )
 
+    # -- Logging
     logging.info(
         f"The `.zarr` directory structure is: \n {sdomlds.root.tree()}"
     )
-
     logging.info(f"Dataset length, ``sdomlds.__len__()``: {sdomlds.__len__()}")
     logging.info(
         f"``Shape of a single item: sdomlds.__getitem__(0)[0].shape``: {sdomlds.__getitem__(0)[0].shape}"
