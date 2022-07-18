@@ -1,5 +1,4 @@
 import sys
-import timeit
 
 import logging
 import zarr
@@ -9,9 +8,8 @@ import dask.array as da
 import numpy as np
 import pandas as pd
 
-from collections import defaultdict
-from torch.utils.data import DataLoader, Dataset
-from typing import List, Set, Dict, Tuple, Optional
+from torch.utils.data import Dataset
+from typing import List, Optional
 
 # -- Setting up logging
 logger = logging.getLogger(__name__)
@@ -24,20 +22,17 @@ def is_str_list(val: List[object]):  # -> Boolean():
 
 
 def get_minvalue(inputlist):
-
+    """Function to return min. value and corresponding index"""
     # get the minimum value in the list
     min_value = min(inputlist)
-
     # return the index of minimum value
     min_index = inputlist.index(min_value)
     return min_value, min_index
 
 
-def common_entries(*dcts):
-    if not dcts:
-        return
-    for i in set(dcts[0]).intersection(*dcts[1:]):
-        yield (i,) + tuple(d[i] for d in dcts)
+def get_aia_channel_name(inputzarr):
+    """Function to return aia channel name as string from zarr array"""
+    return str(inputzarr).split("/")[2].split("'")[0]
 
 
 class SDOMLDataset(Dataset):
@@ -45,7 +40,7 @@ class SDOMLDataset(Dataset):
     Dataset class for the SDOML v2.+ (`.zarr`) data.
 
     Parameters
-    -------------
+    ----------
     storage_location : str, optional
         Storage location of the root ``.zarr`` file`. This variable is set
         to ``gcs`` by default
@@ -151,15 +146,20 @@ class SDOMLDataset(Dataset):
                 end=sorted(t_obs_new)[-1],
                 freq="6T",
             )
+        else:
+            raise NotImplementedError
 
+        # Generate a ``pd.DataFrame`` of the indices for the
+        # selected times and channels
         df = self._get_cotemporal_data(selected_times)
 
-        images = []
         # -- Obtain the image data
         # --
+        images = []
         for zarray in self.data:
-            name = df[str(zarray).split("/")[2].split("'")[0]]
-            zarr_imgs = da.from_array(zarray)[list(name.to_numpy())]
+            zarr_imgs = da.from_array(zarray)[
+                list(df[get_aia_channel_name(zarray)].to_numpy())
+            ]
             print(
                 f"zarray.shape, {zarray.shape} len zarr_imgs, {len(zarr_imgs)}"
             )
@@ -173,53 +173,103 @@ class SDOMLDataset(Dataset):
             # create an empty dictionary
             dnr = {k: [] for k in required_keys}
             for zarray in self.data:
-                name = str(zarray).split("/")[2].split("'")[0]
                 # fill dictionary with keys from each channel of data
                 [
-                    dnr[k].append(zarray.attrs[k][df[name][j]])
+                    dnr[k].append(
+                        zarray.attrs[k][df[get_aia_channel_name(zarray)][j]]
+                    )
                     for k in required_keys
                 ]
             # append the observation-time dictionary to the final array
             att_arr.append(dnr)
+
         self.attrs = att_arr
-
         self.data_len = len(self.all_images)
-        logging.info(f"There are {len(self.all_images)} observations")
 
-    def _get_cotemporal_data(self, selected_times):
+        unique_len = np.unique([x.shape[0] for x in self.all_images])
+
+        if len(np.unique([x.shape[0] for x in self.all_images])) == 1:
+            logging.info(
+                f"There are {len(self.all_images)} observations, each with {unique_len[0]}"
+            )
+        else:
+            msg = "Not cotemporal observations have the same shape"
+            raise ValueError(msg)
+
+    def _get_cotemporal_data(
+        self,
+        selected_times: pd.date_range(),
+        timedelta: str = "3m",
+    ) -> pd.DataFrame():
         """
         Function to return co-temporal data across channels
+
+        Parameters
+        ----------
+        selected_times : ``pd.date_range``
+            ``pd.date_range`` object.
+
+            ```
+            selected_times = pd.date_range(
+                start='2010-08-01T00:00:00',
+                end='2010-08-01T23:59:59',
+                freq="6T",
+            )
+            ```
+
+        td : str, Optional:
+            the maximum "time delta" that indicates if a given observation time
+            matches the selected time. By default this is 3 minutes ("3m").
+            The SDO/AIA data has been generated at "6m" cadence.
+
+        Returns
+        -------
+
+        df : ``pd.DataFrame`` with cotemporal observations across all
+            channels in the range of selected_times.
+
+
         """
 
-        # Initialise ``pd.Dataframe`` with
-        # the times we requre observations for
+        # Initialise ``pd.Dataframe`` with the times we requre observations for
         df = pd.DataFrame(
             selected_times,
             index=np.arange(np.shape(selected_times)[0]),
             columns=["selected_times"],
         )
 
-        # iterate through channels, finding
+        # iterate through channels, finding indices that match the times
+        # selected. This is required as the SDOML v2.+ data doesn't necessarily
+        # have every channel for each timestep.
         for i, channel in enumerate(self.data):
             selected_index = []
 
-            pd_df = pd.to_datetime(self.data[i].attrs["T_OBS"])
+            # extract the 'T_OBS' from the data that exists.
+            pd_series = pd.to_datetime(self.data[i].attrs["T_OBS"])
 
+            # loop through ``selected_time`` finding the closest match.
             for time in selected_times:
-                selected_index.append(np.argmin(abs(time - pd_df)))
+                selected_index.append(np.argmin(abs(time - pd_series)))
 
+            # for all matches, flag missing where the offset is > ``timedelta``
+            # and set to Nan
             missing_index = np.where(
-                np.abs(pd_df[selected_index] - selected_times)
-                > pd.Timedelta("3m")
+                np.abs(pd_series[selected_index] - selected_times)
+                > pd.Timedelta(timedelta)
             )[0].tolist()
             for midx in missing_index:
+                # if there is a missing_index, set to NaN
                 selected_index[midx] = pd.NA
 
-            name = str(channel).split("/")[2].split("'")[0]
-            df.insert(i + 1, name, selected_index)
+            # insert a new row into the main ``pd.DataFrame`` for the channel
+            df.insert(i + 1, get_aia_channel_name(channel), selected_index)
 
+        # drop all rows with a NaN, and reset the index
         df.dropna(inplace=True)
+        df.reset_index(inplace=True)
 
+        # ``pd.DataFrame`` with cotemporal observations across all channels in
+        # the range of selected_times.
         return df
 
     def __len__(self):
