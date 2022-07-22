@@ -38,11 +38,13 @@ def get_aia_channel_name(inputzarr):
     """Function to return aia channel name as string from zarr array"""
     return str(inputzarr).split("/")[2].split("'")[0]
 
+
 # def catch(func, handle=lambda e : e, *args, **kwargs):
 #     try:
 #         return func(*args, **kwargs)
 #     except Exception as e:
 #         return handle(e)
+
 
 class SDOMLDataset(Dataset):
     """
@@ -95,7 +97,7 @@ class SDOMLDataset(Dataset):
 
     """
 
-    def __init__(
+    def __init__(  # noqa: C901
         self,
         storage_location: str = "gcs",
         zarr_root: str = "fdl-sdoml-v2/sdomlv2_small.zarr/",
@@ -134,25 +136,24 @@ class SDOMLDataset(Dataset):
 
         logging.info(">>> opening zarr")
         start = timeit.default_timer()
-        self.root = zarr.open(store=cache, mode="r") # this takes a while....
+        self.root = zarr.open(store=cache, mode="r")  # this takes a while....
         end = timeit.default_timer()
         logging.info(f">>> time to zarr.open: {end-start}")
-
 
         # Reduce data based on years
         if years is not None:
             if is_str_list(years):
-                # get the ``zarr.heirachy.Group`` for each year, 
+                # get the ``zarr.heirachy.Group`` for each year,
                 # and remove years that don't exist (returned None)
                 # import timeit
                 # start = timeit.default_timer()
-                # zarr_yr = [self.root.get(y) for y in years] 
+                # zarr_yr = [self.root.get(y) for y in years]
                 # by_year = list(filter(None, zarr_yr))
                 # end = timeit.default_timer()
-                # print(end-start) 
-                # 74.6 s 
+                # print(end-start)
+                # 74.6 s
                 # for zarr_yr = [None,
-                #                <zarr.hierarchy.Group '/2010' read-only>, 
+                #                <zarr.hierarchy.Group '/2010' read-only>,
                 #                <zarr.hierarchy.Group '/2011' read-only>]
 
                 start = timeit.default_timer()
@@ -160,21 +161,26 @@ class SDOMLDataset(Dataset):
                 zarr_yr = [self.root.get(y) for y in years]
                 # find locations using string
                 zarr_yr_str = [str(i) for i in zarr_yr]
-                index_to_keep = [x for x, _ in enumerate(zarr_yr_str) if _ != 'None']
+                index_to_keep = [
+                    x for x, _ in enumerate(zarr_yr_str) if _ != "None"
+                ]
                 by_year = [zarr_yr[i] for i in index_to_keep]
                 end = timeit.default_timer()
-                logging.info(f"time to downsample yr (~0.0004s ??): {end-start}")
+                logging.info(
+                    f"time to downsample yr (~0.0004s ??): {end-start}"
+                )
 
-                logger.info('list of channels provided')
+                logger.info("list of channels provided")
                 if len(by_year) != len(years):
-                    logger.warning(f'Not all of {years} are avaiable from {zarr_root}...')
-                    logger.warning(f'... returning {by_year}')
+                    logger.warning(
+                        f"Not all of {years} are avaiable from {zarr_root}..."
+                    )
+                    logger.warning(f"... returning {by_year}")
             else:
                 raise ValueError()
         else:
             by_year = [group for _, group in self.root.groups()]
-            logger.info('list of channels not provided')
-
+            logger.info("list of channels not provided")
 
         # print('by_year:', by_year)
 
@@ -186,12 +192,14 @@ class SDOMLDataset(Dataset):
                     for group in by_year
                     for channel in channels
                 ]
-                
-                self.data = list(filter(None, data)) # why is this so slow?
 
-                if len(self.data) != (len(channels)*len(by_year)):
-                    logger.warning(f'Not all of {channels} are avaiable from {zarr_root}...')
-                    logger.warning(f'...returning {self.data}')
+                self.data = list(filter(None, data))  # why is this so slow?
+
+                if len(self.data) != (len(channels) * len(by_year)):
+                    logger.warning(
+                        f"Not all of {channels} are avaiable from {zarr_root}..."
+                    )
+                    logger.warning(f"...returning {self.data}")
             else:
                 raise ValueError()
         else:
@@ -212,8 +220,14 @@ class SDOMLDataset(Dataset):
                 t_obs_new = self.data[self._min_index].attrs["T_OBS"]
 
                 selected_times = pd.date_range(
-                    start=sorted(t_obs_new)[0].replace('TAI','Z').replace('_', 'T').replace(':60T',':59T'),
-                    end=sorted(t_obs_new)[-1].replace('TAI','Z').replace('_', 'T').replace(':60T',':59T'),
+                    start=sorted(t_obs_new)[0]
+                    .replace("TAI", "Z")
+                    .replace("_", "T")
+                    .replace(":60T", ":59T"),
+                    end=sorted(t_obs_new)[-1]
+                    .replace("TAI", "Z")
+                    .replace("_", "T")
+                    .replace(":60T", ":59T"),
                     freq="6T",
                 )
 
@@ -225,8 +239,8 @@ class SDOMLDataset(Dataset):
                 chunked_list = list()
                 chunk_size = len(channels)
                 for i in range(0, len(self.data), chunk_size):
-                    chunked_list.append(data[i:i+chunk_size])
-                
+                    chunked_list.append(data[i : i + chunk_size])
+
                 if instruments == ["AIA"]:
                     selected_times = pd.date_range(
                         # start=sorted(chunked_list[0][0].attrs["T_OBS"])[0],
@@ -252,46 +266,58 @@ class SDOMLDataset(Dataset):
 
         # Generate a ``pd.DataFrame`` of the indices for the
         # selected times and channels
-        
+
         start = timeit.default_timer()
         df = self._get_cotemporal_data(selected_times)
         end = timeit.default_timer()
         logging.info(f"time to self._get_cotemporal_data: {end-start}")
 
-        logging.info(f'The dataframe is of shape {df.shape}')
-        print(f'df {df}')
+        logging.info(f"The dataframe is of shape {df.shape}")
+        print(f"df {df}")
         # -- Obtain the image data
 
         images = []
         # iterate through channel, i; year, j
         start = timeit.default_timer()
-        for i in range(len(self.chunked_list[0])): # channels [94, 131]
+        for i in range(len(self.chunked_list[0])):  # channels [94, 131]
             im_ = da.concatenate(
-                [self.chunked_list[j][i] for j in range(len(self.chunked_list))], 
-                axis=0
-                )
+                [
+                    self.chunked_list[j][i]
+                    for j in range(len(self.chunked_list))
+                ],
+                axis=0,
+            )
 
             zarr_imgs = im_[
-                list(df[get_aia_channel_name(self.chunked_list[0][i])].to_numpy())
+                list(
+                    df[
+                        get_aia_channel_name(self.chunked_list[0][i])
+                    ].to_numpy()
+                )
             ]
             images.append(zarr_imgs)
 
         # all images are stored in ``self.all_images``
         self.all_images = da.stack(images, axis=1)
         end = timeit.default_timer()
-        print('time taken to combine images: ', end-start)
+        print("time taken to combine images: ", end - start)
 
         start = timeit.default_timer()
         # array to hold channels
         dictins = []
-        for channel in range(len(self.chunked_list[0])): # looping through channels
+        for channel in range(
+            len(self.chunked_list[0])
+        ):  # looping through channels
             dd = defaultdict(list)
-            dicts = [self.chunked_list[j][channel] 
-                    for j in range(len(self.chunked_list))
-                    ] # combines the dictionary for all years
-            for d in dicts: # you can list as many input dicts as you want here
+            dicts = [
+                self.chunked_list[j][channel]
+                for j in range(len(self.chunked_list))
+            ]  # combines the dictionary for all years
+            for (
+                d
+            ) in dicts:  # you can list as many input dicts as you want here
                 for key, value in d.attrs.items():
-                    dd[key].extend(value) # this should be for all years
+                    dd[key].extend(value)  # this should be for all years
 
             dictins.append(dd)
 
@@ -303,30 +329,37 @@ class SDOMLDataset(Dataset):
         start = timeit.default_timer()
         for i in range(len(dictins)):
             for key, value in dictins[i].items():
-                dictins[i][key] = np.array(value, dtype='object')[
-                    list(df[
-                        get_aia_channel_name(self.chunked_list[0][i])
-                        ])
-                    ] # if dtype isn't defined, we get issues with creating a
-                    # sunpy.map where the CTYPE1/CTYPE2 is numpy.str_
-                    # https://stackoverflow.com/questions/61403530/conversion-of-numpy-str-to-byte-or-string-datatype-error
+                dictins[i][key] = np.array(value, dtype="object")[
+                    list(df[get_aia_channel_name(self.chunked_list[0][i])])
+                ]  # if dtype isn't defined, we get issues with creating a
+                # sunpy.map where the CTYPE1/CTYPE2 is numpy.str_
+                # https://stackoverflow.com/questions/61403530/conversion-of-numpy-str-to-byte-or-string-datatype-error
         end = timeit.default_timer()
-        logging.info(f"downsampling dictionary based on cotemporal indices: {end-start}")
+        logging.info(
+            f"downsampling dictionary based on cotemporal indices: {end-start}"
+        )
 
         if required_keys is None:
             required_keys = list(self.data[0].attrs.keys())
 
-        logging.info(f'self.all_images.shape {self.all_images.shape}')
+        logging.info(f"self.all_images.shape {self.all_images.shape}")
 
         start = timeit.default_timer()
-        dnr = [{k: [] for k in required_keys} for _ in range(self.all_images.shape[0])]
-        for i in range(self.all_images.shape[0]): # items in dataset
-            for d_ in dictins: # channels
+        dnr = [
+            {k: [] for k in required_keys}
+            for _ in range(self.all_images.shape[0])
+        ]
+        for i in range(self.all_images.shape[0]):  # items in dataset
+            for d_ in dictins:  # channels
                 for key, value in d_.items():
                     dnr[i][key].append(value[i])
         end = timeit.default_timer()
-        logging.info(f"combining into a list of item-specific dictionaries {end-start}")
-        logging.info(f'time taken to combine into a list of item-specific dictionaries {end-start}')
+        logging.info(
+            f"combining into a list of item-specific dictionaries {end-start}"
+        )
+        logging.info(
+            f"time taken to combine into a list of item-specific dictionaries {end-start}"
+        )
         # all metadata is stored in ``self.attrs``
         self.attrs = dnr
         self.data_len = len(self.all_images)
@@ -392,7 +425,7 @@ class SDOMLDataset(Dataset):
         # iterate through channels, finding indices that match the times
         # selected. This is required as the SDOML v2.+ data doesn't necessarily
         # have every channel for each timestep.
-        
+
         # for i, channel in enumerate(self.data[0]):
         #     # i is the channel index, of the first year (self.data[0])
         #     selected_index = []
@@ -408,29 +441,42 @@ class SDOMLDataset(Dataset):
 
         # print('self.chunked_list: ', self.chunked_list)
 
-        for i, channel in enumerate(self.chunked_list[0]): # self.data):
+        for i, channel in enumerate(self.chunked_list[0]):  # self.data):
             s = timeit.default_timer()
             selected_index = []
 
             # extract the 'T_OBS' from the data that exists.
             # pd_series = pd.to_datetime(self.data[i].attrs["T_OBS"])
 
-            arr = [] 
+            arr = []
             s = timeit.default_timer()
             for j in range(len(self.chunked_list)):
                 arr.extend(self.chunked_list[j][i].attrs["T_OBS"])
-            logging.info(f'time to extract T_TOBS; {timeit.default_timer() - s} seconds')
+            logging.info(
+                f"time to extract T_TOBS; {timeit.default_timer() - s} seconds"
+            )
 
             s = timeit.default_timer()
-            pd_series = pd.to_datetime([item.replace('TAI','Z').replace('_', 'T').replace(':60T',':59T') for item in arr])
-            logging.info(f'time to fix T_TOBS + create pd.to-datetime; {timeit.default_timer() - s} seconds')
+            pd_series = pd.to_datetime(
+                [
+                    item.replace("TAI", "Z")
+                    .replace("_", "T")
+                    .replace(":60T", ":59T")
+                    for item in arr
+                ]
+            )
+            logging.info(
+                f"time to fix T_TOBS + create pd.to-datetime; {timeit.default_timer() - s} seconds"
+            )
 
             # loop through ``selected_time`` finding the closest match.
             s = timeit.default_timer()
             # this is a very expensive operaton
             for time in selected_times:
                 selected_index.append(np.argmin(abs(time - pd_series)))
-            logging.info(f'time to find closest match; {timeit.default_timer() - s} seconds')
+            logging.info(
+                f"time to find closest match; {timeit.default_timer() - s} seconds"
+            )
 
             # for all matches, flag missing where the offset is > ``timedelta``
             # and set to NaN
@@ -442,12 +488,16 @@ class SDOMLDataset(Dataset):
             for midx in missing_index:
                 # if there is a missing_index, set to NaN
                 selected_index[midx] = pd.NA
-            logging.info(f'time to find missing matches; {timeit.default_timer() - s} seconds')
+            logging.info(
+                f"time to find missing matches; {timeit.default_timer() - s} seconds"
+            )
 
             # insert a new row into the main ``pd.DataFrame`` for the channel
             s = timeit.default_timer()
             df.insert(i + 1, get_aia_channel_name(channel), selected_index)
-            logging.info(f'inserted {channel}; {timeit.default_timer() - s} seconds')
+            logging.info(
+                f"inserted {channel}; {timeit.default_timer() - s} seconds"
+            )
 
         # drop all rows with a NaN, and reset the index
         df.dropna(inplace=True)
@@ -487,9 +537,9 @@ if __name__ == "__main__":
     sdomlds = SDOMLDataset(
         storage_location="gcs",
         zarr_root=zr,
-        cache_max_size=1*512*512*4096,
-        years=["2010", "2011", "2012"], # 2009 doesn't exist in this data
-        channels=["94A", "193A"], # 312 doesn't exist as an SDO channel
+        cache_max_size=1 * 512 * 512 * 4096,
+        years=["2010", "2011", "2012"],  # 2009 doesn't exist in this data
+        channels=["94A", "193A"],  # 312 doesn't exist as an SDO channel
     )
 
     sdoe = timeit.default_timer()
