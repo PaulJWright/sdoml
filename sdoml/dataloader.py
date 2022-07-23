@@ -109,17 +109,11 @@ class SDOMLDataset(Dataset):
         selected_times=None,
     ):
 
-        if len(instruments) != 1 and instruments[0] != "AIA":
-            raise ValueError()
-
-        # if channels is not None:
-        #     for channel in channels:
-
-        #     self.channels
-        # else:
-        #     self.channels = None
+        if len(instruments) != 1:
+            raise NotImplementedError
 
         if storage_location == "gcs":
+            # direct to the data
             import gcsfs
 
             store = gcsfs.GCSMap(
@@ -130,7 +124,6 @@ class SDOMLDataset(Dataset):
         else:
             raise NotImplementedError
 
-        # !TODO understand if we need to cache this...
         logging.info(">>> setting up cache")
         cache = zarr.LRUStoreCache(store, max_size=cache_max_size)
 
@@ -143,32 +136,18 @@ class SDOMLDataset(Dataset):
         # Reduce data based on years
         if years is not None:
             if is_str_list(years):
-                # get the ``zarr.heirachy.Group`` for each year,
-                # and remove years that don't exist (returned None)
-                # import timeit
-                # start = timeit.default_timer()
-                # zarr_yr = [self.root.get(y) for y in years]
-                # by_year = list(filter(None, zarr_yr))
-                # end = timeit.default_timer()
-                # print(end-start)
-                # 74.6 s
-                # for zarr_yr = [None,
-                #                <zarr.hierarchy.Group '/2010' read-only>,
-                #                <zarr.hierarchy.Group '/2011' read-only>]
 
                 start = timeit.default_timer()
-                # for the same command, the following takes 0.0004 s
                 zarr_yr = [self.root.get(y) for y in years]
-                # find locations using string
+                # iterating directly on zarr_yr is slow;
+                # therefore generate a list(str)
                 zarr_yr_str = [str(i) for i in zarr_yr]
                 index_to_keep = [
                     x for x, _ in enumerate(zarr_yr_str) if _ != "None"
                 ]
                 by_year = [zarr_yr[i] for i in index_to_keep]
                 end = timeit.default_timer()
-                logging.info(
-                    f"time to downsample yr (~0.0004s ??): {end-start}"
-                )
+                logging.info(f"time to downsample yr: {end-start}")
 
                 logger.info("list of channels provided")
                 if len(by_year) != len(years):
@@ -179,10 +158,10 @@ class SDOMLDataset(Dataset):
             else:
                 raise ValueError()
         else:
+            logger.warning(
+                "list of years not provided, using all data available"
+            )
             by_year = [group for _, group in self.root.groups()]
-            logger.info("list of channels not provided")
-
-        # print('by_year:', by_year)
 
         # Reduce data based on channels
         if channels is not None:
@@ -193,32 +172,36 @@ class SDOMLDataset(Dataset):
                     for channel in channels
                 ]
 
-                self.data = list(filter(None, data))  # why is this so slow?
+                data_str = [str(i) for i in data]
+                index_to_keep = [
+                    x for x, _ in enumerate(data_str) if _ != "None"
+                ]
+                self.data = [data[i] for i in index_to_keep]
+
+                print(self.data)
 
                 if len(self.data) != (len(channels) * len(by_year)):
                     logger.warning(
                         f"Not all of {channels} are avaiable from {zarr_root}..."
                     )
-                    logger.warning(f"...returning {self.data}")
+                    logger.warning(f"... returning {self.data}")
             else:
                 raise ValueError()
         else:
             self.data = [g for y in by_year for _, g in y.arrays()]
 
-        # print('self.data', self.data)
-
         if selected_times is None:
-            # one of the selected channels may have less images than another
-            self._min_val, self._min_index = get_minvalue(
-                [d.shape[0] for d in self.data]
-            )
-
-            # print("min, index", self._min_val, self._min_index)
-            # take times from the array with the least number of obs.
 
             if len(by_year) == 1:
+                # one of the selected channels may have less images than another
+                # take times from the array with the least number of obs.
+                self._min_val, self._min_index = get_minvalue(
+                    [d.shape[0] for d in self.data]
+                )
+
                 t_obs_new = self.data[self._min_index].attrs["T_OBS"]
 
+                # need to move this into a method
                 selected_times = pd.date_range(
                     start=sorted(t_obs_new)[0]
                     .replace("TAI", "Z")
@@ -230,8 +213,6 @@ class SDOMLDataset(Dataset):
                     .replace(":60T", ":59T"),
                     freq="6T",
                 )
-
-                # print(sorted(t_obs_new)[0], sorted(t_obs_new)[-1])
 
                 self.chunked_list = [self.data]
             else:
@@ -249,7 +230,7 @@ class SDOMLDataset(Dataset):
                         end="2015-12-31T23:59:59.00Z",
                         freq="6T",
                     )
-                else:
+                elif instruments == ["HMI"]:
                     selected_times = pd.date_range(
                         # start=sorted(chunked_list[0][0].attrs["T_OBS"])[0],
                         # end=sorted(chunked_list[-1][0].attrs["T_OBS"])[-1],
@@ -257,25 +238,23 @@ class SDOMLDataset(Dataset):
                         end="2015.12.31T23:59:59",
                         freq="6T",
                     )
-
-                # logging.info(f'selected times {selected_times}')
+                else:
+                    raise NotImplementedError
 
                 self.chunked_list = chunked_list
         else:
             raise NotImplementedError
 
-        # Generate a ``pd.DataFrame`` of the indices for the
-        # selected times and channels
-
         start = timeit.default_timer()
+        # Generate a ``pd.DataFrame`` of the indices for the
+        # selected times and channels; this is slow...
         df = self._get_cotemporal_data(selected_times)
         end = timeit.default_timer()
         logging.info(f"time to self._get_cotemporal_data: {end-start}")
-
         logging.info(f"The dataframe is of shape {df.shape}")
         print(f"df {df}")
-        # -- Obtain the image data
 
+        # -- Obtain the image data
         images = []
         # iterate through channel, i; year, j
         start = timeit.default_timer()
@@ -426,27 +405,11 @@ class SDOMLDataset(Dataset):
         # selected. This is required as the SDOML v2.+ data doesn't necessarily
         # have every channel for each timestep.
 
-        # for i, channel in enumerate(self.data[0]):
-        #     # i is the channel index, of the first year (self.data[0])
-        #     selected_index = []
-
-        #     # extract the 'T_OBS' from the data that exists.
-
-        #     arr = []
-        #     for idx in range(len(self.data)):
-        #         print(self.data[idx][i])
-        #         arr.extend(self.data[idx][i].attrs["T_OBS"])
-
-        #     pd_series = pd.to_datetime(arr)
-
-        # print('self.chunked_list: ', self.chunked_list)
-
         for i, channel in enumerate(self.chunked_list[0]):  # self.data):
             s = timeit.default_timer()
             selected_index = []
 
             # extract the 'T_OBS' from the data that exists.
-            # pd_series = pd.to_datetime(self.data[i].attrs["T_OBS"])
 
             arr = []
             s = timeit.default_timer()
@@ -471,7 +434,7 @@ class SDOMLDataset(Dataset):
 
             # loop through ``selected_time`` finding the closest match.
             s = timeit.default_timer()
-            # this is a very expensive operaton
+            # !TODO fix this very expensive operation
             for time in selected_times:
                 selected_index.append(np.argmin(abs(time - pd_series)))
             logging.info(
@@ -513,6 +476,8 @@ class SDOMLDataset(Dataset):
     def __getitem__(self, idx):
         try:
             # obtain shape of [idx, channels, dim_1, dim_2]
+            # This will take a while the first time a chunk is accessed;
+            # this will then be cached upto the max_cache_size
             item = torch.from_numpy(
                 np.array(self.all_images[idx, :, :, :])
             ).unsqueeze(dim=0)
@@ -539,7 +504,12 @@ if __name__ == "__main__":
         zarr_root=zr,
         cache_max_size=1 * 512 * 512 * 4096,
         years=["2010", "2011", "2012"],  # 2009 doesn't exist in this data
-        channels=["94A", "193A"],  # 312 doesn't exist as an SDO channel
+        channels=[
+            "94A",
+            "130A",
+            "193A",
+        ],  # 312 doesn't exist as an SDO channel
+        instruments=["AIA"],
     )
 
     sdoe = timeit.default_timer()
