@@ -37,18 +37,6 @@ def get_minvalue(inputlist):
     return min_value, min_index
 
 
-def get_aia_channel_name(inputzarr):
-    """Function to return aia channel name as string from zarr array"""
-    return str(inputzarr).split("/")[2].split("'")[0]
-
-
-# def catch(func, handle=lambda e : e, *args, **kwargs):
-#     try:
-#         return func(*args, **kwargs)
-#     except Exception as e:
-#         return handle(e)
-
-
 class SDOMLDataset(Dataset):
     """
     Dataset class for the SDOML v2.+ (`.zarr`) data.
@@ -434,8 +422,6 @@ if __name__ == "__main__":
         years=[
             "2009",
             "2010",
-            "2011",
-            "2012",
         ],  # 2009 doesn't exist in this data
         channels=[
             "94A",
@@ -444,26 +430,28 @@ if __name__ == "__main__":
             "193A",
             "211A",
             "335A",
-        ],  # 312 doesn't exist as an SDO channel
+        ],
         instruments=["AIA"],
-        notebook=False,
     )
 
     end = timeit.default_timer()
-    logging.info(f"time taken to run {zr} TOTAL {end-start}")
 
     # -- Logging
+    logging.info(f"time taken to run {zr} TOTAL {end-start}")
     logging.info(f"Dataset length, ``sdomlds.__len__()``: {sdomlds.__len__()}")
 
+    # Second time requesting an this item will be quicker due to the cache
     for i in ["first", "second"]:
         start = timeit.default_timer()
-        logging.info(
-            f"``Shape of a single item: sdomlds.__getitem__(0)[0].shape``: {sdomlds.__getitem__(0)[0].shape}"
-        )
+        _ = sdomlds.__getitem__(0)[0]
         end = timeit.default_timer()
         logger.info(
             f"{i} ``sdomlds.__getitem__(0)`` request took {end-start} seconds"
         )
+
+    logging.info(
+        f"``Shape of a single item: sdomlds.__getitem__(0)[0].shape``: {sdomlds.__getitem__(0)[0].shape}"
+    )
 
     logging.info(
         f"``Number of keys: len(sdomlds.__getitem__(0)[1])``: {len(sdomlds.__getitem__(0)[1])}"
