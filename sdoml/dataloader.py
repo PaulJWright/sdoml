@@ -1,10 +1,10 @@
 import contextlib
 import os
 import sys
+import timeit
 
 import gcsfs
 import logging
-import timeit
 import torch
 import zarr
 
@@ -15,8 +15,8 @@ import pandas as pd
 from collections import defaultdict
 from datetime import date
 from torch.utils.data import Dataset
-from tqdm import tqdm
 from typing import List, Optional
+from tqdm.autonotebook import tqdm
 
 # -- Setting up logging
 logger = logging.getLogger(__name__)
@@ -109,7 +109,8 @@ class SDOMLDataset(Dataset):
         instruments: Optional[List[str]] = None,
         channels: Optional[List[str]] = None,
         required_keys: Optional[List[str]] = None,
-        selected_times=None,
+        selected_times: Optional[List[str]] = None,
+        notebook: bool = False,
     ):
 
         # !TODO allow variations on these
@@ -162,9 +163,9 @@ class SDOMLDataset(Dataset):
         # go through years, and channels ensuring we can read the data
         for year in sorted_yrs:
             for i, channel in enumerate(chnnls):
-                with contextlib.suppress(Exception):
+                try:
                     store = gcsfs.GCSMap(
-                        os.path.join(zr, year, channel),
+                        os.path.join(self.zarr_root, year, channel),
                         gcs=gcsfs.GCSFileSystem(access="read_only"),
                         check=False,
                     )
@@ -179,7 +180,16 @@ class SDOMLDataset(Dataset):
                         yc_dict[year] = []
 
                     yc_dict[year].append(channel)
+                except Exception:
+                    logging.warning(
+                        f"Cannot find ``{os.path.join(self.zarr_root, year, channel)}``"
+                    )
+
         # check the data has the correct channels for all years
+
+        if not yc_dict:
+            logging.error("Empty yc_dict")
+
         return yc_dict
 
     def _check_selected_times(self, select_t):
@@ -271,7 +281,8 @@ class SDOMLDataset(Dataset):
             tqdm(
                 self.chunked_list,
                 desc="iterating through channels",
-                leave=None,
+                leave=False,
+                position=0,
             )
         ):  # self.data):
             # extract the 'T_OBS' from the data that exists.
@@ -279,7 +290,8 @@ class SDOMLDataset(Dataset):
             for j in tqdm(
                 range(len(self.chunked_list[0])),
                 desc="combining seperate years",
-                leave=None,
+                leave=False,
+                position=1,
             ):
                 arr.extend(self.chunked_list[i][j].attrs["T_OBS"])
 
@@ -290,7 +302,8 @@ class SDOMLDataset(Dataset):
                 for time in tqdm(
                     self.selected_times,
                     desc="finding matching indices",
-                    leave=None,
+                    leave=False,
+                    position=1,
                 )
             ]
 
@@ -301,7 +314,10 @@ class SDOMLDataset(Dataset):
                 > pd.Timedelta(timedelta)
             )[0].tolist()
             for midx in tqdm(
-                missing_index, desc="removing missing indices", leave=None
+                missing_index,
+                desc="removing missing indices",
+                leave=None,
+                position=1,
             ):
                 # if there is a missing_index, set to NaN
                 selected_index[midx] = pd.NA
@@ -329,6 +345,7 @@ class SDOMLDataset(Dataset):
                 np.array(self.all_images[idx, :, :, :])
             ).unsqueeze(dim=0)
             meta = self.attrs[idx]
+
             return item, meta
 
         except Exception as error:
@@ -385,7 +402,6 @@ class SDOMLDataset(Dataset):
 
     def _select_times(self):
         freq = "12T"  # 4 hours
-
         s = date(int(self.years[0]), 1, 1)
         e = date(int(self.years[-1]), 12, 31)
         pd_dr = pd.date_range(
@@ -431,6 +447,7 @@ if __name__ == "__main__":
             "335A",
         ],  # 312 doesn't exist as an SDO channel
         instruments=["AIA"],
+        notebook=False,
     )
 
     end = timeit.default_timer()
