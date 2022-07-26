@@ -110,7 +110,6 @@ class SDOMLDataset(Dataset):
         channels: Optional[List[str]] = None,
         required_keys: Optional[List[str]] = None,
         selected_times: Optional[List[str]] = None,
-        notebook: bool = False,
     ):
 
         # !TODO allow variations on these
