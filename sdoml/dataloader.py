@@ -1,4 +1,3 @@
-import contextlib
 import os
 import sys
 import timeit
@@ -14,9 +13,11 @@ import pandas as pd
 
 from collections import defaultdict
 from datetime import date
+from pprint import pprint
 from torch.utils.data import Dataset
 from typing import List, Optional
 from tqdm.autonotebook import tqdm
+
 
 # -- Setting up logging
 logger = logging.getLogger(__name__)
@@ -94,21 +95,23 @@ class SDOMLDataset(Dataset):
         zarr_root: str = "fdl-sdoml-v2/sdomlv2_small.zarr/",
         cache_max_size: Optional[int] = 1 * 512 * 512 * 2048,
         years: Optional[List[str]] = None,
-        instruments: Optional[List[str]] = None,
+        # instruments: Optional[List[str]] = None,
         channels: Optional[List[str]] = None,
         required_keys: Optional[List[str]] = None,
         selected_times: Optional[List[str]] = None,
     ):
 
+        assert zarr_root.keys() == channels.keys()
+
         # !TODO allow variations on these
-        if (
-            storage_location != "gcs"
-            or len(instruments) != 1
-            or zarr_root != "fdl-sdoml-v2/sdomlv2_small.zarr/"
-            or instruments is None
-            or required_keys
-        ):
-            raise NotImplementedError
+        # if (
+        #     storage_location != "gcs"
+        #     or len(instruments) != 1
+        #     or zarr_root != "fdl-sdoml-v2/sdomlv2_small.zarr/"
+        #     or instruments is not ["AIA"]
+        #     or required_keys
+        # ):
+        #     raise NotImplementedError
 
         # setting variables
         self.zarr_root = zarr_root
@@ -148,30 +151,37 @@ class SDOMLDataset(Dataset):
         yc_dict = {}
 
         # go through years, and channels ensuring we can read the data
-        for year in sorted_yrs:
-            for i, channel in enumerate(chnnls):
-                try:
-                    store = gcsfs.GCSMap(
-                        os.path.join(self.zarr_root, year, channel),
-                        gcs=gcsfs.GCSFileSystem(access="read_only"),
-                        check=False,
-                    )
+        for key, values in chnnls.items():
+            for year in sorted_yrs:
+                for i, channel in enumerate(values):
+                    # print(key, year, channel, self.zarr_root[key])
+                    # print(os.path.join(self.zarr_root[key], year, channel))
+                    try:
+                        store = gcsfs.GCSMap(
+                            os.path.join(self.zarr_root[key], year, channel),
+                            gcs=gcsfs.GCSFileSystem(access="read_only"),
+                            check=False,
+                        )
 
-                    # cache = zarr.LRUStoreCache(store, max_size=None)
-                    # using ``zarr.LRUStoreCache`` is useful, but slows down the code,
-                    # when we just want to check what the groups are (not access arrays)
+                        # cache = zarr.LRUStoreCache(store, max_size=None)
+                        # using ``zarr.LRUStoreCache`` is useful, but slows down the code,
+                        # when we just want to check what the groups are (not access arrays)
 
-                    _ = zarr.open(store, mode="r")  # cache,
+                        _ = zarr.open(store, mode="r")
 
-                    if i == 0:
-                        yc_dict[year] = []
+                        if i == 0:
+                            try:
+                                yc_dict[year]
+                            except KeyError:
+                                yc_dict[year] = {}
 
-                    yc_dict[year].append(channel)
-                except Exception:
-                    logging.warning(
-                        f"Cannot find ``{os.path.join(self.zarr_root, year, channel)}``"
-                    )
+                            yc_dict[year][key] = []
 
+                        yc_dict[year][key].append(channel)
+                    except Exception:
+                        logging.warning(
+                            f"Cannot find ``{os.path.join(self.zarr_root[key], year, channel)}``"
+                        )
         # check the data has the correct channels for all years
 
         if not yc_dict:
@@ -180,6 +190,10 @@ class SDOMLDataset(Dataset):
         return yc_dict
 
     def _check_selected_times(self, select_t):
+        """
+        Function to check the selected times provided are in agreement
+        with the years provided.
+        """
 
         # Only checking the start and end times align with the data
         # as people may request e.g. 2010, 2012, 2014
@@ -196,25 +210,26 @@ class SDOMLDataset(Dataset):
     def _load_data(self):
 
         by_year = []
-        for c in self.channels:
-            ch = []
-            for y in self.years:
-                store = gcsfs.GCSMap(
-                    os.path.join(self.zarr_root, y, c),
-                    gcs=gcsfs.GCSFileSystem(access="read_only"),
-                    check=False,
-                )
+        for c, v in self.channels.items():
+            for vals in v:
+                ch = []
+                for y in self.years:
+                    store = gcsfs.GCSMap(
+                        os.path.join(self.zarr_root[c], y, vals),
+                        gcs=gcsfs.GCSFileSystem(access="read_only"),
+                        check=False,
+                    )
 
-                cache = zarr.LRUStoreCache(
-                    store,
-                    max_size=(
-                        self._cache_max_size
-                        / (len(self.channels) * len(self.years))
-                    ),
-                )
+                    cache = zarr.LRUStoreCache(
+                        store,
+                        max_size=(
+                            self._cache_max_size
+                            / (len(self.channels) * len(self.years))
+                        ),
+                    )
 
-                ch.append(zarr.open(cache, mode="r"))
-            by_year.append(ch)
+                    ch.append(zarr.open(cache, mode="r"))
+                by_year.append(ch)
 
         return by_year
 
@@ -253,6 +268,8 @@ class SDOMLDataset(Dataset):
 
         """
 
+        self.c_list = [vv for c, v in self.channels.items() for vv in v]
+
         # Initialise ``pd.Dataframe`` with the times we requre observations for
         df = pd.DataFrame(
             self.selected_times,
@@ -274,6 +291,13 @@ class SDOMLDataset(Dataset):
         ):  # self.data):
             # extract the 'T_OBS' from the data that exists.
             arr = []
+
+            # quick and dirty hack for HMI
+            if self.c_list[i] in ["Bx", "By", "Bz"]:
+                t_format = "%Y.%m.%d_%H:%M:%S_TAI"
+            else:
+                t_format = "%Y-%m-%dT%H:%M:%S.%fZ"
+
             for j in tqdm(
                 range(len(self.chunked_list[0])),
                 desc="combining seperate years",
@@ -282,7 +306,7 @@ class SDOMLDataset(Dataset):
             ):
                 arr.extend(self.chunked_list[i][j].attrs["T_OBS"])
 
-            pd_series = pd.to_datetime(arr)
+            pd_series = pd.to_datetime(arr, format=t_format, utc=True)
 
             selected_index = [
                 np.argmin(abs(time - pd_series))
@@ -310,7 +334,7 @@ class SDOMLDataset(Dataset):
                 selected_index[midx] = pd.NA
 
             # insert a new row into the main ``pd.DataFrame`` for the channel
-            df.insert(i + 1, self.channels[i], selected_index)
+            df.insert(i + 1, self.c_list[i], selected_index)
 
         # drop all rows with a NaN, and reset the index
         df.dropna(inplace=True)
@@ -350,7 +374,7 @@ class SDOMLDataset(Dataset):
                 axis=0,
             )
 
-            zarr_imgs = im_[list(self.df[self.channels[i]].to_numpy())]
+            zarr_imgs = im_[list(self.df[self.c_list[i]].to_numpy())]
             images.append(zarr_imgs)
 
         return da.stack(images, axis=1)
@@ -371,19 +395,35 @@ class SDOMLDataset(Dataset):
         for i in range(len(dictins)):
             for key, value in dictins[i].items():
                 dictins[i][key] = np.array(value, dtype="object")[
-                    list(self.df[self.channels[i]])
+                    list(self.df[self.c_list[i]])
                 ]
 
-        required_keys = list(self.chunked_list[0][0].attrs.keys())
+        # quick and dirty hack to get this to work for multiple instruments
+        required_keys = list(
+            set().union(
+                *[
+                    self.chunked_list[0][0].attrs.keys(),
+                    self.chunked_list[-1][0].attrs.keys(),
+                ]
+            )
+        )
 
         dnr = [
             {k: [] for k in required_keys}
             for _ in range(self.all_images.shape[0])
         ]
         for i in range(self.all_images.shape[0]):  # items in dataset
-            for d_ in dictins:  # channels
-                for key, value in d_.items():
-                    dnr[i][key].append(value[i])
+            # need to test, but should put NaN where the values
+            # aren't shared between two instruments
+
+            for key in required_keys:
+                for d_ in dictins:
+                    try:
+                        val = d_[key][i]
+                    except Exception:
+                        val = pd.NA
+
+                    dnr[i][key].append(val)
 
         return dnr
 
@@ -414,24 +454,19 @@ if __name__ == "__main__":
     )
 
     start = timeit.default_timer()
-    zr = "fdl-sdoml-v2/sdomlv2_small.zarr/"
+    zr = {
+        "AIA": "fdl-sdoml-v2/sdomlv2_small.zarr/",
+        "HMI": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
+    }
     sdomlds = SDOMLDataset(
         storage_location="gcs",
         zarr_root=zr,
         cache_max_size=1 * 512 * 512 * 4096,
-        years=[
-            "2009",
-            "2010",
-        ],  # 2009 doesn't exist in this data
-        channels=[
-            "94A",
-            "131A",
-            "171A",
-            "193A",
-            "211A",
-            "335A",
-        ],
-        instruments=["AIA"],
+        years=["2010", "2011", "2012"],  # 2009 doesn't exist in this data
+        channels={
+            "AIA": ["94A", "131A", "171A", "193A", "211A", "335A"],
+            "HMI": ["Bx", "By", "Bz"],
+        },
     )
 
     end = timeit.default_timer()
