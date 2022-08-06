@@ -2,31 +2,33 @@
 GenericDataSource is a generic DataSource class from which all other DataSource classes inherit from.
 """
 
-from abc import ABC, abstractmethod
-from tqdm.autonotebook import tqdm
-from sdoml.utils.utils import inspect_single_gcs_zarr
 import os
-
 import logging
 import numpy as np
 import pandas as pd
+
+from abc import ABC, abstractmethod
+from sdoml.utils.utils import inspect_single_gcs_zarr
+from tqdm.autonotebook import tqdm
 from typing import Dict, List
 
 __all__ = ["GenericDataSource"]
 
 
 class GenericDataSource(ABC):
-    """..."""
+    """
+    Generic DataSource Class to be inherited by specific DataSource classes.
+    """
 
     # initialise the ``_registry`` with an empty dict()
     _registry = dict()
 
     def __init_subclass__(cls, **kwargs):
         """
-        This hook initialises the subclasses of the GenericData class.
+        This hook initialises the subclasses of the GenericDataSource class.
         This block of code is called for each subclass, and is used to register
         each subclass in a dict that has the ``datasource`` attribute.
-        This is passed into the Map Factory for registration.
+        This is passed into the DataSource Factory for registration.
         """
         super().__init_subclass__(**kwargs)
 
@@ -43,75 +45,17 @@ class GenericDataSource(ABC):
         self.years = None
         self.channels = None
 
-    def __getitem__(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def _get_years_channels(self, yrs, chnnls) -> Dict:
-        """
-        Function for determining cotemporal data
-        """
-        yc_dict = {}
-
-        # go through years, and channels ensuring we can read the data
-        for key, values in chnnls.items():
-            for year in self._years:
-                for i, channel in enumerate(values):
-                    # print(key, year, channel, self.zarr_root[key])
-                    # print(os.path.join(self.zarr_root[key], year, channel))
-                    try:
-                        _ = inspect_single_gcs_zarr(
-                            os.path.join(self.zarr_root[key], year, channel)
-                        )
-
-                        if i == 0:
-                            try:
-                                yc_dict[year]
-                            except KeyError:
-                                yc_dict[year] = {}
-
-                            yc_dict[year][key] = []
-
-                        yc_dict[year][key].append(channel)
-                    except Exception:
-                        logging.warning(
-                            f"Cannot find ``{os.path.join(self.zarr_root[key], year, channel)}``"
-                        )
-        # check the data has the correct channels for all years
-        if not yc_dict:
-            logging.error("Empty yc_dict")
-
-        return yc_dict
-
     def __repr__(self):
         """
         Function to show the attrs of self
         """
-        return ", ".join((f"{k}: {v}" for k, v in vars(self).items()))
-
-    @abstractmethod
-    def load_data_meta(self) -> None:
-        """
-        Function to load the data
-
-        Returns
-        -------
-        None
-        """
-        pass
-
-    @abstractmethod
-    def get_cotemporal_indices(self) -> None:
-        """
-        Function for determining cotemporal data
-        """
-        pass
+        return ", \n ".join((f"{k}: {v}" for k, v in vars(self).items()))
 
     def find_remove_missing(
-        self, series, selected_index, gg, timedelta
+        self, series, selected_index, gg, timedelta: str = "3m"
     ) -> List[int]:
         """
-        find and remove missing indices within a specified timedelta
+        find and remove missing indices within a specified ``timedelta``
         """
 
         missing_index = np.where(
@@ -126,5 +70,30 @@ class GenericDataSource(ABC):
     def find_selected_indices(
         self, pdseries: pd.DataFrame, selected_times
     ) -> List:
-        """..."""
+        """
+        Find the set of indices of ``pdseries`` that are closest to ``selected_times``
+        """
         return [np.argmin(abs(time - pdseries)) for time in selected_times]
+
+    @abstractmethod
+    def _get_years_channels(self, yrs, chnnls) -> Dict:
+        """
+        Function for determining cotemporal data
+
+        set ``self.years`` and ``self.channels``
+        """
+        pass
+
+    @abstractmethod
+    def load_data_meta(self) -> None:
+        """
+        Function to load the data
+        """
+        pass
+
+    @abstractmethod
+    def get_cotemporal_indices(self) -> None:
+        """
+        Function for determining cotemporal data
+        """
+        pass

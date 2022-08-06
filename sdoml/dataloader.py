@@ -1,4 +1,3 @@
-import os
 import sys
 
 import logging
@@ -39,10 +38,15 @@ class SDOMLDataset(Dataset):
         A list of years (from 2010 to present) to include. By default this
         variable is ``2010`` which will return data for 2010 only.
 
+    freq: str, optional
+        A string representing the frequency at which data should be obtained.
+        See [here](https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases)
+        for a list of frequency aliases. By default this is '120T' (120 minutes)
+
     data_to_load: Dict[str, Dict[str]]
         A dictionary of instruments to include.
 
-        Options :
+        Valid Keys :
             - ``AIA`` : SDO Atomospheric Imaging Assembly
             - ``HMI`` : SDO Helioseismic and Magnetic Imager
             - ``EVE`` : Extreme UltraViolet Variability Experiment
@@ -98,8 +102,8 @@ class SDOMLDataset(Dataset):
         self,
         cache_max_size: Optional[int] = 1 * 512 * 512 * 2048,
         years: Optional[List[str]] = None,
+        freq="120T",
         data_to_load: Optional[List[str]] = None,
-        freq="6T",
     ):
 
         # !TODO implement passing of ``selected_times`` and ``required_keys``
@@ -112,6 +116,7 @@ class SDOMLDataset(Dataset):
         self._cache_max_size = cache_max_size
         self._single_cache_max_size = self._cache_max_size / len(data_to_load)
         self._years = years
+        self._meta = data_to_load
 
         # instantiate the appropriate classes
         data_arr = [
@@ -143,8 +148,8 @@ class SDOMLDataset(Dataset):
 
         # Go through the time component of the loaded_data,
         # match to ``df.selected_times``, and delete any rows that have NaN.
-        # Doing this (especially when data is ordered by cadence)
-        # reduces the number of potential matches for the next set of data.
+        # Doing this (especially when data is ordered by cadence) reduces
+        # the number of potential matches for the next set of data.
         for i, darr in enumerate(data_arr):
             if i == 0:
                 self.df = darr.get_cotemporal_indices(
@@ -193,18 +198,9 @@ class SDOMLDataset(Dataset):
                 dictionaries_.append(dd)
             dictionaries.append(dictionaries_)
 
-        # quick and dirty hack to get this to work for multiple instruments
-        # required_keys = list(
-        #     set().union(
-        #         *[
-        #             d[0].keys() for d in dictionaries
-        #         ]
-        #     )
-        # )
+        dnr_arr_all = []
 
-        dnr_arr = []
         for sad, dicn in zip(self.all_data, dictionaries):
-
             # different keys
             required_keys = dicn[0].keys()
 
@@ -222,9 +218,11 @@ class SDOMLDataset(Dataset):
 
                         dnr[i][key].append(val)
 
-            dnr_arr.append(dnr)
+                # dnr_arr.append(dnr)
+            dnr_arr = [str(dnr_i) for dnr_i in dnr]
+            dnr_arr_all.append(dnr_arr)
 
-        return dnr_arr
+        return dnr_arr_all
 
     def get_cotemporal_data(self) -> List[da.array]:
         """
@@ -262,13 +260,17 @@ class SDOMLDataset(Dataset):
             # This will take a while the first time a chunk is accessed;
             # this will then be cached upto the max_cache_size
             data_items = [
-                torch.from_numpy(np.array(d[idx])).unsqueeze(dim=0)
+                torch.from_numpy(np.array(d[idx]))
+                # .unsqueeze(dim=0) to convert to 1 x H x W, to be in compatible torchvision format
                 for d in self.all_data
             ]
 
-            meta_items = [d[idx] for d in self.all_meta]
+            data_items_dict = dict(zip(self._meta.keys(), data_items))
 
-            return data_items, meta_items
+            meta_items = [d[idx] for d in self.all_meta]
+            meta_items_dict = dict(zip(self._meta.keys(), meta_items))
+
+            return {"data": data_items_dict, "meta": meta_items_dict}
 
         except Exception as error:
             logging.error(error)
@@ -308,7 +310,7 @@ if __name__ == "__main__":
         data_to_load={
             "HMI": {
                 "storage_location": "gcs",
-                "root": "fdl-sdoml-v2/sdomlv2_hmi.zarr/",
+                "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
                 "channels": ["Bx", "By", "Bz"],
             },  # 12 minute cadence
             "AIA": {
@@ -333,18 +335,8 @@ if __name__ == "__main__":
     # Second time requesting an this item will be quicker due to the cache
     for i in ["first", "second"]:
         start = timeit.default_timer()
-        _ = sdomlds.__getitem__(0)[0]
+        _ = sdomlds.__getitem__(0)
         end = timeit.default_timer()
         logger.info(
             f"{i} ``sdomlds.__getitem__(0)`` request took {end-start} seconds"
         )
-
-    logging.info(f"``sdomlds.channels``: {sdomlds.channels}")
-
-    logging.info(
-        f"``Shape of a single item: sdomlds.__getitem__(0)[0]``: {[sdomlds.__getitem__(0)[0][q].shape for q in range(len(sdomlds.__getitem__(0)[0]))]}"
-    )
-
-    logging.info(
-        f"``Number of keys: sdomlds.__getitem__(0)[1]``: {[len(sdomlds.__getitem__(0)[1][q]) for q in range(len(sdomlds.__getitem__(0)[1]))]}"
-    )
