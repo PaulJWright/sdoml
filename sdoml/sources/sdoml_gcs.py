@@ -4,24 +4,28 @@ Subclass for the SDOML Dataset (v2+) hosted on gcs
 
 import logging
 import os
-
-import pandas as pd
-
 from collections import defaultdict
 from functools import reduce
+from pathlib import Path
 from typing import Dict, List, Tuple
-from pprint import pformat
-from multiprocessing import Pool
 
+import numpy as np
+import pandas as pd
+
+from sdoml.sources.data_base import GenericDataSource
 from sdoml.utils.utils import (
+    inspect_single_gcs_zarr,
     load_single_gcs_zarr,
-    load_single_zarr,
     solve_list,
 )
-from sdoml.sources.data_base import GenericDataSource
-from sdoml.utils.utils import inspect_single_gcs_zarr, inspect_single_zarr
+
+# from Python 3.9+, use dict, list, tuple; see PEP 585
+
 
 __all__ = ["SDOAIA_gcs", "SDOHMI_gcs", "SDOEVE_gcs"]
+
+# MEGS-A is depreacated; these years are a constant.
+EVE_MEGSA_YEARS = ["2010", "2011", "2012", "2014"]
 
 
 class SDOAIA_gcs(GenericDataSource):
@@ -43,40 +47,46 @@ class SDOAIA_gcs(GenericDataSource):
         ├── 335A (47187, 512, 512) float32
         └── 94A (46930, 512, 512) float32
     ```
-
     """
 
     def __init__(self, instrument, meta, years, cache_size, **kwargs):
         super().__init__(instrument, meta, years, cache_size, **kwargs)
 
-        # set the time_format
-        self.time_format = "%Y-%m-%dT%H:%M:%S.%fZ"
+        # Fill in missing info:
+        # 1) self._time_format
+        # 2) self._available_years
+        # 3) self._available_channels
+        # 4) self._data_by_year
+        # 5) self._meta_by_year
+        # 6) self._time_by_year
 
-        # define the cache size
-        self._cache_size = cache_size
-
+        # 1) set the time_format
+        self._time_format = "%Y-%m-%dT%H:%M:%S.%fZ"
         # obtain the years and channels available from the
         # provided _years / _channels
         yr_channel_dict = self._get_years_channels()
-        self.years = list(yr_channel_dict.keys())
+        self._available_years = list(yr_channel_dict.keys())  # 2)
         # check that each year has the same channels
-        self.channels = list(
+        self._available_channels = list(
             reduce(
                 lambda i, j: i & j,
                 (set(n) for n in list(yr_channel_dict.values())),
             )
-        )
+        )  # 3)
+        self._available_channels = solve_list(
+            self._available_channels, self._meta["channels"]
+        )  # setting to the same order as the items provided
 
-        # self.channels should be in the same order as the items provided
-        self.channels = solve_list(self.channels, self._meta["channels"])
-        # print the attributes of the class
-        # logging.info(f'class attributes: {pformat(self.__dict__)}')
+        items = self.load_data_meta()
+        self._data_by_year = items[0]  # 4)
+        self._meta_by_year = items[1]  # 5)
+        self._time_by_year = items[2]  # 6)
 
     def _get_years_channels(self) -> Dict[str, List[str]]:
         """
         Function for determining the available years and channels. The output
-        of this method is set to ``self.years`` and ``self.channels`` in
-        ``__init__``.
+        of this method should be set to ``self._available_years`` and
+        ``self._available_channels``
 
         Returns
         -------
@@ -94,24 +104,22 @@ class SDOAIA_gcs(GenericDataSource):
             '2011': ['94A', '131A', '171A', ...],
             }
         ```
-
         """
         yc_dict = {}
 
         # go through years, and channels ensuring we can read the data
         for i, channel in enumerate(self._meta["channels"]):
-            for year in self._years:
-
+            for year in self._requested_years:
                 path_to_data = os.path.join(self._meta["root"], year, channel)
 
                 try:
-                    _ = inspect_single_zarr(path_to_data)
+                    _ = inspect_single_gcs_zarr(path_to_data)
 
                     if i == 0:
                         try:
                             yc_dict[year]
                         except KeyError:
-                            yc_dict[year] = []  # Fix this
+                            yc_dict[year] = []
 
                     yc_dict[year].append(channel)
 
@@ -124,14 +132,13 @@ class SDOAIA_gcs(GenericDataSource):
 
         return yc_dict
 
-    def load_data_meta(self) -> Tuple[List, List]:
+    def load_data_meta(self) -> Tuple[List, List, np.ndarray]:
         """
-        Method to load SDO/AIA data from the .zarr file on GCS
+        Method to load SDO/AIA data from the ``.zarr`` file on GCS
 
         Returns
         -------
-
-        (by_year, meta_yr): Tuple(List, List):
+        (by_year, meta_yr, time_yr): Tuple(List, List, np.ndarray)
 
             - by_year: List:
                 contains the data loaded per year, and per channel,
@@ -141,129 +148,57 @@ class SDOAIA_gcs(GenericDataSource):
                 contains the data loaded per year, and per channel,
                 e.g. ``by_year[year_index][channel_index]``
 
+            - time_yr: np.ndarray:
+                contains observation time per year, and per channel,
+                e.g. ``time_yr[year_index][channel_index]``
+
         """
+        super().load_data_meta()
 
-        # __init__ is enforcing this
-        if self.years is None or self.channels is None:
-            raise ValueError
-
-        by_year = []
-        meta_yr = []
-        for yr in self.years:
+        by_year, meta_yr = [], []
+        for yr in self._available_years:
 
             data = [
-                load_single_zarr(
+                load_single_gcs_zarr(
                     path_to_zarr=os.path.join(self._meta["root"], yr, ch),
                     cache_max_single_size=self._cache_size,
                 )
-                for ch in self.channels
+                for ch in self._available_channels
             ]
             meta = [d.attrs for d in data]
             by_year.append(data)
             meta_yr.append(meta)
 
-        return (by_year, meta_yr)
+        time_yr = []
+        for idx in range(len(meta_yr[0])):
+            data_years = []
+            # combine the seperate years of the data
+            for item in meta_yr:
+                data_years.extend(item[idx]["T_OBS"])
+            time_yr.append(np.array(data_years))
 
-    def get_cotemporal_indices(
-        self,
-        original_df: pd.DataFrame,
-        data_byyear: List,
-        select_times,
-        t_delta="3m",
-    ) -> pd.DataFrame:
+        time_yr = np.array(time_yr, dtype="object")
 
-        """
-        Method to obtain co-temporal AIA data using a dataframe with a set of
-        ``datetime`` indices
-
-        Returns
-        -------
-
-        og_df_copy: pd.DataFrame
-            Copy of the ``original_df`` with additional columns corresponding
-            to ``self.channels``
-        """
-
-        # setting for multiprocessing
-        self.__data_byyear = data_byyear
-        self.__select_times = select_times
-        self.__t_delta = t_delta
-
-        # create a copy of the ``pd.DataFrame``
-        og_df_copy = original_df.copy()
-
-        logging.info(">>> Multiprocessing")
-
-        # Use 75% of CPU cores
-        with Pool(int(os.cpu_count() * 0.75)) as p:
-            channel_indices = p.map(
-                self.get_cotemporal_indices_singular,
-                list(range(len(self.__data_byyear[0]))),
-            )
-        logging.info(">>> End of Multi-processing")
-
-        for item in channel_indices:
-            logging.info(
-                f">>> inserting column ``{self.channels[item[0]]}`` into the dataframe"
-            )
-            og_df_copy.insert(
-                len(og_df_copy.columns), self.channels[item[0]], item[1]
-            )
-
-        return og_df_copy
-
-    def get_cotemporal_indices_singular(self, idx) -> Tuple[int, ...]:
-        """
-        Method to return a set of indices in the loaded data
-        (``self.__data_byyear``) that correspond to observations at a set of chosen (``self.__select_times``).
-
-        This method calls ``self.find_selected_indices`` to obtain the set of
-        indices in the loaded data that correspond to the desired times
-        (``select_index``). This is later passed to ``self.find_remove_missing``
-        to limit those to matches within a given ``t_delta``
-        (the default value is "3m").
-        """
-
-        data_years = []
-
-        # combine the seperate years of the data
-        for j in range(len(self.__data_byyear)):
-            data_years.extend(self.__data_byyear[j][idx].attrs["T_OBS"])
-
-        # create a series based on the years of the loaded data
-        pd_series = pd.to_datetime(
-            data_years, format=self.time_format, utc=True
-        )
-        # find indices of loaded data that match the desired times
-        select_index = self.find_selected_indices(
-            pd_series, self.__select_times
-        )
-        # remove rows where there is not a match between loaded data and
-        # requested times to within ``self.__t_delta``
-        select_index_removed_missing = self.find_remove_missing(
-            pd_series, select_index, self.__select_times, self.__t_delta
-        )
-
-        return (idx, select_index_removed_missing)
+        return (by_year, meta_yr, time_yr)
 
     @classmethod
     def datasource(cls, instrument: str, meta: Dict) -> bool:
         """
-        Determines if the combination of ``instrument``, ``location``, and
-        ``root`` should lead to the instantiation of this child class
+        Determines if the combination of ``instrument``, ``storage_location``,
+        and filename (extracted from ``root``) should lead to the instantiation
+        of this child class
         """
-
         return (
             instrument.lower() == "aia"
             and str(meta["storage_location"]).lower() == "gcs"
-            # and str(meta["root"]).startswith("fdl-sdoml-v2")
+            and Path(str(meta["root"])).name == "sdomlv2_small.zarr"
         )
 
 
 class SDOHMI_gcs(SDOAIA_gcs):
     """
     Data class for SDO/HMI located on GCS under the ``fdl-sdoml-v2`` bucket.
-    As ``SDOAIA_gcs`` with ``self.time_format`` where the data is stored in
+    As ``SDOAIA_gcs`` with ``self._time_format`` where the data is stored in
     the time format: ``%Y.%m.%d_%H:%M:%S_TAI``
 
     As with SDOAIA_gcs, the data is stored as a ``zarr.hierarchy.Group``, e.g.:
@@ -275,33 +210,33 @@ class SDOHMI_gcs(SDOAIA_gcs):
         ├── By (25540, 512, 512) float32
         └── Bz (25540, 512, 512) float32
     ```
-
     """
 
     def __init__(self, instrument, meta, years, cache_size, **kwargs):
         super().__init__(instrument, meta, years, cache_size, **kwargs)
 
         # Main difference between AIA and HMI data is the time format.
-        self.time_format = "%Y.%m.%d_%H:%M:%S_TAI"
+        self._time_format = "%Y.%m.%d_%H:%M:%S_TAI"
 
     @classmethod
     def datasource(cls, instrument: str, meta: Dict) -> bool:
         """
-        Determines if the combination of ``instrument``, ``location``, and
-        ``root`` should lead to the instantiation of this child class
+        Determines if the combination of ``instrument``, ``storage_location``,
+        and filename (extracted from ``root``) should lead to the instantiation
+        of this child class
         """
         return (
             instrument.lower() == "hmi"
             and str(meta["storage_location"]).lower() == "gcs"
-            # and str(meta["root"]).startswith("fdl-sdoml-v2")
+            and Path(str(meta["root"])).name == "sdomlv2_hmi_small.zarr"
         )
 
 
 class SDOEVE_gcs(GenericDataSource):
     """
-    Data class for SDO/EVE(MEGS-A) located on GCS under the ``fdl-sdoml-v2`` bucket.
-    As ``SDOAIA_gcs`` with ``self.time_format`` where the data is stored in
-    the time format: ``%Y.%m.%d_%H:%M:%S_TAI``
+    Data class for SDO/EVE(MEGS-A) located on GCS under the ``fdl-sdoml-v2``
+    bucket. As ``SDOAIA_gcs`` with ``self._time_format`` where the data is
+    stored in the time format: ``%Y.%m.%d_%H:%M:%S_TAI``
 
     The data is stored as a ``zarr.hierarchy.Group``:
 
@@ -310,240 +245,182 @@ class SDOEVE_gcs(GenericDataSource):
     └── MEGS-A
         ├── C III (2137380,) float32
         ├── Fe IX (2137380,) float32
-        ├── Fe VIII (2137380,) float32
-        ├── Fe X (2137380,) float32
-        ├── Fe XI (2137380,) float32
-        ├── Fe XII (2137380,) float32
-        ├── Fe XIII (2137380,) float32
-        ├── Fe XIV (2137380,) float32
-        ├── Fe XIX (2137380,) float32
-        ├── Fe XV (2137380,) float32
-        ├── Fe XVI (2137380,) float32
-        ├── Fe XVIII (2137380,) float32
-        ├── Fe XVI_2 (2137380,) float32
-        ├── Fe XX (2137380,) float32
-        ├── Fe XX_2 (2137380,) float32
-        ├── Fe XX_3 (2137380,) float32
-        ├── H I (2137380,) float32
-        ├── H I_2 (2137380,) float32
-        ├── H I_3 (2137380,) float32
-        ├── He I (2137380,) float32
-        ├── He II (2137380,) float32
-        ├── He II_2 (2137380,) float32
-        ├── He I_2 (2137380,) float32
-        ├── Mg IX (2137380,) float32
-        ├── Mg X (2137380,) float32
-        ├── Mg X_2 (2137380,) float32
-        ├── Ne VII (2137380,) float32
-        ├── Ne VIII (2137380,) float32
-        ├── O II (2137380,) float32
-        ├── O III (2137380,) float32
-        ├── O III_2 (2137380,) float32
-        ├── O II_2 (2137380,) float32
-        ├── O IV (2137380,) float32
-        ├── O IV_2 (2137380,) float32
-        ├── O V (2137380,) float32
-        ├── O VI (2137380,) float32
-        ├── S XIV (2137380,) float32
-        ├── Si XII (2137380,) float32
+        ⋮
         ├── Si XII_2 (2137380,) float32
         └── Time (2137380,) <U23
     ```
-
     """
 
     def __init__(self, instrument, meta, years, cache_size=None, **kwargs):
         super().__init__(instrument, meta, years, cache_size=None, **kwargs)
 
-        # set the time_format
-        self.time_format = "%Y-%m-%d %H:%M:%S.%f"
+        # Fill in missing info:
+        # 1) self._time_format
+        # 2) self._available_years
+        # 3) self._available_channels
+        # 4) self._data_by_year
+        # 5) self._meta_by_year
+        # 6) self._time_by_year
 
-        # define the cache size
-        self._cache_size = cache_size
-
+        self._time_format = "%Y-%m-%d %H:%M:%S.%f"  # 1) set the time_format
         # obtain the years and channels available from the
-        # provided _years / _channels
         yr_channel_dict = self._get_years_channels()
-        # data is for all years
-        self.years = ["2010", "2011", "2012", "2014"]
-        self.channels = yr_channel_dict["all"]
-        self.channels = solve_list(self.channels, self._meta["channels"])
+        self._available_years = EVE_MEGSA_YEARS  # 2)
+        self._available_channels = yr_channel_dict["all"]  # 3)
+        self._available_channels = solve_list(
+            self._available_channels, self._meta["channels"]
+        )
 
-        # print the attributes of the class
-        # logging.info(f'class attributes: {pformat(self.__dict__)}')
+        items = self.load_data_meta()
+        self._data_by_year = items[0]  # 4)
+        self._meta_by_year = items[1]  # 5)
+        self._time_by_year = items[2]  # 6)
 
     def _get_years_channels(self) -> Dict[str, List[str]]:
         """
         Function for determining the available years and channels. The output
-        of this method is set to ``self.years`` and ``self.channels`` in
-        ``__init__``.
+        of this method should be set to ``self._available_years`` and
+        ``self._available_channels``
 
         Returns
         -------
 
         yc_dict: Dict[str, List[str]]
-            - Keys are the subset of years available from ``yrs``
+            - Keys are the subset of years available from ``yrs``.
+            For EVE, this is just set to 'all'.
             - Values are the subset of channels available (from ``chnnls``)
             for the given key (year)
 
         e.g.
-
         ```
         yc_dict = {
-            'all': ['C III', 'Fe IX', ...],
+            'all': ['C III', 'Fe IX', ..., 'Si XII_2'],
             }
         ```
-
         """
-        # The data is not stored in a per-year format.
+        # The data is not stored per-year, but instead already combined
         yc_dict = {"all": []}
 
         for channel in self._meta["channels"]:
-
             path_to_data = os.path.join(self._meta["root"], "MEGS-A", channel)
-
             try:
-                _ = inspect_single_zarr(path_to_data)
+                _ = inspect_single_gcs_zarr(path_to_data)  # check if exists
                 yc_dict["all"].append(channel)
             except Exception:
                 logging.warning(f"Cannot find ``{path_to_data}``")
 
-        # check the data has the correct channels for all years
         if not yc_dict:
             logging.error("Empty year/channel dictionary")
 
         return yc_dict
 
-    def load_data_meta(self) -> Tuple[List, List]:
+    def load_data_meta(self) -> Tuple[List, List, np.ndarray]:
         """
-        Method to load SDO/AIA data from the .zarr file on GCS and return
-        the ``loaded_data`` and the array of default dictionaries ``ddict_arr``
+        Method to load SDO/AIA data from the ``.zarr`` file on GCS, return
+        the ``loaded_data``, the metadata as array of dictionaries ``dict_arr``,
+        and a ``np.ndarray`` of the time information for each cahnnel.
 
         Returns
         -------
-        (loaded_data, ddict_arr): Tuple(List, List):
+        (loaded_data, dict_arr, time_yr): Tuple(List, List):
 
             - loaded_data: List:
                 contains the data loaded per year, and per channel,
                 e.g. ``by_year[year_index][channel_index]``
 
-            - ddict_arr: List:
+            - dict_arr: List:
                 contains the data loaded per year, and per channel,
-                e.g. ``by_year[year_index][channel_index]``
 
-
-        ```
+            - time_yr: np.ndarray:
+                contains observation time per year, and per channel,
+                e.g. ``time_yr[year_index][channel_index]``
         """
+        super().load_data_meta()
 
         loaded_data = [
-            load_single_zarr(
+            load_single_gcs_zarr(
                 os.path.join(self._meta["root"], "MEGS-A", ch),
                 cache_max_single_size=self._cache_size,
             )
-            for ch in self.channels
+            for ch in self._available_channels
         ]
-        # all data share the same Time information. Add this to the end of the list.
+
         meta = [d.attrs for d in loaded_data]
 
         # by default the data contains one set of keys
         # to be consistent with other sdoml data,
         # create a list for each key of data length
-
-        ddict_arr = []
+        dict_arr = []
         for x in meta:
             ddict = defaultdict(list)
             for k, v in x.items():
                 ddict[k] = [v] * len(loaded_data[0])
-            ddict_arr.append(ddict)
+            dict_arr.append(ddict)
 
             # !TODO add T_OBS to metadata
 
-        loaded_data.append(
-            load_single_zarr(
-                os.path.join(self._meta["root"], "MEGS-A", "Time"),
-                cache_max_single_size=self._cache_size,
-            )
+        time_yr = np.array(
+            [
+                load_single_gcs_zarr(
+                    os.path.join(self._meta["root"], "MEGS-A", "Time"),
+                    cache_max_single_size=self._cache_size,
+                )
+            ]
+            * len(self.available_channels)
         )
 
-        return ([loaded_data], [ddict_arr])
+        return ([loaded_data], [dict_arr], time_yr)
 
     def get_cotemporal_indices(
         self,
         original_df: pd.DataFrame,
-        data_byyear: List,
-        select_times,
-        t_delta="3m",
+        column_name: str,
+        time_delta: str = "3m",
     ) -> pd.DataFrame:
 
         """
-        Method to return a ``pd.DataFrame`` with cotemporal AIA data for
-        ``self.channels` using a ``datetime`` indices
+        Method to return a ``pd.DataFrame`` with co-temporal EVE data for
+        ``self._available_channels``.
+
+        This method replaces ``get_cotemporal_indices`` in the parent class
+        with a more efficient implementation (EVE has co-temporal data between
+        different ions: we only need to match to ``original_df`` once).
 
         Returns
         -------
 
         og_df_copy: pd.DataFrame
             Copy of the ``original_df`` with additional columns corresponding
-            to ``self.channels``
+            to ``self._available_channels``
         """
+        # as eve is already co-temporal, only need to run on a single index
+        EVE_INDEX = 0
 
         # make a copy of the original dataframe
         og_df_copy = original_df.copy()
-
         # obtain co-temporal data
-        channel_indices = self.get_cotemporal_indices_singular(
-            data_byyear, select_times, t_delta
+        channel_indices = self._get_cotemporal_indices_singular(
+            EVE_INDEX, original_df[column_name], time_delta
         )
-
         # insert data into the df
-        for channel in self.channels:
+        for channel in self._available_channels:
             og_df_copy.insert(
                 loc=len(og_df_copy.columns),
                 column=channel,
-                value=channel_indices,
+                value=channel_indices[1],
             )
 
         return og_df_copy
 
-    def get_cotemporal_indices_singular(
-        self, dby, select_t, t_delta="3m"
-    ) -> Tuple:
-        """
-        Method to return a set of indices in the loaded data (``dby``) that
-        correspond to observations at a set of chosen (``select_t``).
-
-        This method calls ``self.find_selected_indices`` to obtain the set of
-        indices in the loaded data that correspond to the desired times
-        (``select_index``). This is later passed to ``self.find_remove_missing``
-        to limit those to matches within a given ``t_delta``
-        (the default value is "3m").
-
-        """
-
-        pd_series = pd.to_datetime(
-            dby[0][-1], format=self.time_format, utc=True
-        )
-
-        # all data for EVE is stored as a single array covering 4 years.
-        # Downsample ``pd_series`` to only the relevant years
-        itms = [i.year in [int(yr) for yr in self.years] for i in pd_series]
-        pd_series = pd_series[itms]
-
-        select_index = self.find_selected_indices(pd_series, select_t)
-        select_index = self.find_remove_missing(
-            pd_series, select_index, select_t, t_delta
-        )
-
-        return select_index
-
     @classmethod
     def datasource(cls, instrument: str, meta: Dict) -> bool:
         """
-        Determines if the combination of ``instrument``, ``location``, and
-        ``root`` should lead to the instantiation of this child class
+        Determines if the combination of ``instrument``, ``storage_location``,
+        and filename (extracted from ``root``) should lead to the instantiation
+        of this child class
         """
         return (
             instrument.lower() == "eve"
             and str(meta["storage_location"]).lower() == "gcs"
-            # and str(meta["root"]).startswith("fdl-sdoml-v2")
+            and Path(str(meta["root"])).name == "sdomlv2_eve.zarr"
         )

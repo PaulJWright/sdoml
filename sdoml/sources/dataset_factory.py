@@ -37,12 +37,10 @@
 Module for defining the framework around the Data factory.
 """
 
-from sdoml.sources.sdoml_gcs import GenericDataSource
+from sunpy.map.map_factory import MultipleMatchError, NoMatchError
 from sunpy.util.datatype_factory_base import BasicRegistrationFactory
-from sunpy.map.map_factory import (
-    NoMatchError,
-    MultipleMatchError,
-)
+
+from sdoml.sources.data_base import GenericDataSource
 
 __all__ = ["DataSourceFactory", "DataSource"]
 
@@ -112,6 +110,6 @@ class DataSourceFactory(BasicRegistrationFactory):
 
 DataSource = DataSourceFactory(
     default_widget_type=None,  # !TODO consider using ``GenericDataSource``
-    registry=GenericDataSource._registry,
     additional_validation_functions=["datasource"],
+    registry=GenericDataSource._registry,
 )

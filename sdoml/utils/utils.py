@@ -3,13 +3,11 @@ A set of utility functions
 """
 
 import os
+from typing import List, Optional, Tuple, Union
 
 import gcsfs
 import numpy as np
-from typing import List, Union
 import zarr
-
-from typing import Optional, Tuple
 
 __all__ = [
     "gcs_conn",
