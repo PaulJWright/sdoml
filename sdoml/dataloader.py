@@ -370,7 +370,6 @@ if __name__ == "__main__":
     end = timeit.default_timer()
 
     logging.info(f" sdomlds.dataframe \n {pformat(sdomlds.dataframe)} \n \n")
-    # -- Logging
     logging.info(f"time taken to run: {end-start} seconds")
     logging.info(f"Dataset length, ``sdomlds.__len__()``: {sdomlds.__len__()}")
 
