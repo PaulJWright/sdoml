@@ -32,7 +32,7 @@ def gcs_conn(path_to_zarr: os.path) -> gcsfs.GCSMap:
 def load_single_gcs_zarr(
     path_to_zarr: os.path,
     cache_max_single_size: int = None,
-) -> Union[zarr.core.Array, zarr.hierarchy.Group]:
+) -> Union[zarr.Array, zarr.Group]:
     """load zarr from gcs using LRU cache"""
     return zarr.open(
         zarr.LRUStoreCache(
@@ -45,7 +45,7 @@ def load_single_gcs_zarr(
 
 def inspect_single_gcs_zarr(
     path_to_zarr: os.path,
-) -> Union[zarr.core.Array, zarr.hierarchy.Group]:
+) -> Union[zarr.Array, zarr.Group]:
     """load zarr from gcs *without* using cache"""
     return zarr.open(store=gcs_conn(path_to_zarr), mode="r")
 
@@ -53,8 +53,8 @@ def inspect_single_gcs_zarr(
 def load_single_zarr(
     # Figure out why I can't use cache here...
     path_to_zarr: os.path,
-    cache_max_single_size: int = None,
-) -> Union[zarr.core.Array, zarr.hierarchy.Group]:
+    # cache_max_single_size: int = None,
+) -> Union[zarr.Array, zarr.Group]:
     """load zarr from gcs using LRU cache"""
     return zarr.open(
         store=path_to_zarr,
@@ -64,7 +64,7 @@ def load_single_zarr(
 
 def inspect_single_zarr(
     path_to_zarr: os.path,
-) -> Union[zarr.core.Array, zarr.hierarchy.Group]:
+) -> Union[zarr.Array, zarr.Group]:
     """load zarr from gcs *without* using cache"""
     return zarr.open(store=path_to_zarr, mode="r")
 
