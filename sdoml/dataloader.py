@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
-from tqdm.autonotebook import tqdm
 
 from sdoml.sources.dataset_factory import DataSource
 

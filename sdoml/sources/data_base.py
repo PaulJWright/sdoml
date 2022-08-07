@@ -7,7 +7,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from itertools import repeat
-from multiprocessing import Pool
+from multiprocessing import get_context
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -232,7 +232,7 @@ class GenericDataSource(ABC):
         logging.info(">>> Multiprocessing")
         # Uses 75% of CPU cores
         # !TODO may want to make this a variable
-        with Pool(int(os.cpu_count() * 0.75)) as p:
+        with get_context("spawn").Pool(int(os.cpu_count() * 0.75)) as p:
             channel_indices = p.starmap(
                 self._get_cotemporal_indices_singular,  # function
                 zip(
