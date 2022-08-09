@@ -22,6 +22,22 @@ __all__ = ["GenericDataSource"]
 class GenericDataSource(ABC):
     """
     Generic DataSource Class to be inherited by specific DataSource classes.
+
+    The following attributes should be set in the child class:
+
+    .. code-block :: python
+
+        self._time_format : str                 # e.g. %Y-%m-%dT%H:%M:%S.%fZ
+
+        # as a result of the abstractmethod ``self._get_years_channels()``
+        self._available_years : List[str]       # e.g. ['2010','2011', ...]
+        self._available_channels : List[str]    # e.g. ['94A', '131A', ...]
+
+        # as a result of the abstractmethod ``self.load_data_meta()``
+        self._data_by_year : List
+        self._meta_by_year : List
+        self._time_by_year : np.ndarray
+
     """
 
     # initialise the ``_registry`` with an empty dict()
@@ -49,23 +65,28 @@ class GenericDataSource(ABC):
     ) -> None:
 
         # want to do checks here...
-
         self._instrument = instrument
         self._meta = meta
         self._requested_years = sorted(years)
         self._cache_size = cache_size
 
-        # Set some attributes that need to be updated in the child classes
-        self._time_format = None
-        self._available_years = None
-        self._available_channels = None
-        self._data_by_year = None
-        self._meta_by_year = None
-        self._time_by_year = None
+        #  -- Set some attributes that need to be updated in the child classes
+        #
+        self._time_format: str
+        #
+        # the following can be an output of ``self._get_years_channels()``
+        self._available_years: List[str]
+        self._available_channels: List[str]
+        #
+        # the following can be an output of ``self.load_data_meta()``
+        self._data_by_year: List
+        self._meta_by_year: List
+        self._time_by_year: np.ndarrsay
+        # --
 
     def __repr__(self):
         """
-        Function to show the attrs of self
+        Reutnr the class attributes
         """
         return ", \n".join((f"{k}: {v}" for k, v in vars(self).items()))
 
@@ -77,7 +98,7 @@ class GenericDataSource(ABC):
         timedelta: str,
     ) -> List[int]:
         """
-        find and remove missing indices within a specified ``timedelta``
+        Find and remove missing indices within a specified ``timedelta``
 
         Parameters
         ----------
@@ -120,30 +141,29 @@ class GenericDataSource(ABC):
         return [np.argmin(abs(time - pdseries)) for time in selected_times]
 
     @abstractmethod
-    def _get_years_channels(self) -> Dict:
+    def set_years_channels(self) -> None:
         """
-        Function for determining the available years and channels. The output
-        of this method should be set to ``self._available_years`` and
-        ``self._available_channels``
+        Determine the available years and channels.
 
-        Returns
-        -------
+        This method should set:
 
-        yc_dict: Dict[str, List[str]]
-            - Keys are the subset of years available from ``yrs``
-            - Values are the subset of channels available (from ``chnnls``)
-            for the given key (year)
+            self._available_years : List[str]
+            self._available_channels : List[str]
+
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    def load_data_meta(self) -> Tuple[List, List, List]:
+    def load_data_meta(self) -> None:
         """
-        Function to load the data.
+        Load the data.
 
-        Returns:
-        --------
-        Tuple(data_by_year, meta_by_year, time_by_year)
+        This method should set:
+
+            self._data_by_year : List
+            self._meta_by_year : List
+            self._time_by_year : np.ndarray
+
         """
 
         if self._available_years is None or self._available_channels is None:
@@ -223,9 +243,6 @@ class GenericDataSource(ABC):
                 f"a column with name ``{column_name}`` does not exist in ``original_df``"
             ) from e
 
-        # # setting for multiprocessing
-        # self.__time_delta = time_delta
-
         # create a copy of the ``pd.DataFrame``
         og_df_copy = original_df.copy()
 
@@ -263,13 +280,17 @@ class GenericDataSource(ABC):
         t_delta: str,
     ) -> Tuple[int, List[int]]:
         """
-        Method to return a set of indices in the loaded data
-        that correspond to observations at a set of chosen (``select_times``).
+        Return a set of indices in the loaded data that correspond to
+        observations at a set of chosen (``select_times``).
 
         This method calls ``self._find_selected_indices`` to obtain the set of
         indices in the loaded data that correspond to the desired times
         (``select_index``). This is later passed to ``self._find_remove_missing``
         to limit those to matches within a given ``t_delta``.
+
+        Returns
+        -------
+        (idx, select_index_removed_missing): Tuple[int, List[?]]
         """
 
         if not isinstance(idx, int):
@@ -301,27 +322,35 @@ class GenericDataSource(ABC):
     @property
     def data_meta_time(self) -> Tuple[List, List, List]:
         """
-        return the data_by_year, meta_by_year, and time_by_year
+        return the data/metadata/time by_year
         """
         return (self._data_by_year, self._meta_by_year, self._time_by_year)
 
     @property
-    def time_format(self):
+    def time_format(self) -> str:
         """
-        return the list of available channels in the data
+        return the *provided* time format of the data
         """
         return self._time_format
 
     @property
-    def available_years(self):
+    def available_years(self) -> List[str]:
         """
         return the list of available years in the data
         """
         return self._available_years
 
     @property
-    def available_channels(self):
+    def available_channels(self) -> List[str]:
         """
-        return the list of available channels in the data
+        return the list of channels that are available in all ``available_years``
         """
         return self._available_channels
+
+    @classmethod
+    @abstractmethod
+    def datasource(cls) -> bool:
+        """
+        Determines if the child class should be instantiated
+        """
+        return NotImplementedError

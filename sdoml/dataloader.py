@@ -24,7 +24,6 @@ class SDOMLDataset(Dataset):
 
     Parameters
     ----------
-
     cache_max_size: int, Nonetype, optional
         The maximum size that the ``zarr`` cache may grow to,
         in number of bytes. By default this variable is 1 * 512 * 512 * 2048.
@@ -32,75 +31,65 @@ class SDOMLDataset(Dataset):
         see https://zarr.readthedocs.io/en/stable/api/storage.html#zarr.storage.LRUStoreCache
 
     years: List[str], Nonetype, optional
-        A list of years (from 2010 to present) to include. By default this
+        A list of years to include. By default this
         variable is ``2010`` which will return data for 2010 only.
 
     freq: str, optional
         A string representing the frequency at which data should be obtained.
         See [here](https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases)
-        for a list of frequency aliases. By default this is '120T' (120 minutes)
+        for a list of frequency aliases. By default this is ``120T`` (120 minutes)
 
     data_to_load: Dict[str, Dict[str]]
         A dictionary of instruments dictionaries to include.
 
         Valid instruments :
-            ``AIA`` : SDO Atomospheric Imaging Assembly
-            ``HMI`` : SDO Helioseismic and Magnetic Imager
-            ``EVE`` : Extreme UltraViolet Variability Experiment
+            `AIA` : SDO Atomospheric Imaging Assembly
+            `HMI` : SDO Helioseismic and Magnetic Imager
+            `EVE` : Extreme UltraViolet Variability Experiment
 
-        Each instrument dictionary requires the following keys:
+    Each instrument dictionary requires the following keys:
 
-        - storage_location: str
+
+        storage_location: str
             Storage location of the file.
 
             Options :
                 - ``gcs`` : Google Cloud Storage
 
-        - root: str
+        root: str
             Location of the root ``.zarr`` file within the ``storage_location``.
             By default this is ``fdl-sdoml-v2/sdomlv2_small.zarr/`` (which is
             located on Google Cloud Storage ``storage_location == gcs``).
 
-        - channels: List[str]
+        channels: List[str]
             A list of channels to include from each instrument.
 
+    Examples
+    --------
 
-        An example for AIA is as follows:
+    .. code-block:: python
 
-    ```
-        "AIA": {
-            "storage_location": "gcs",
-            "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
-            "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
-        }
-    ```
-
-    Example Usage
-    -------------
-
-    ```
-    sdomlds = SDOMLDataset(
-        cache_max_size=1 * 512 * 512 * 4096,
-        years=["2010", "2011"],
-        data_to_load={
-                "HMI": {
-                    "storage_location": "gcs",
-                    "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
-                    "channels": ["Bx", "By", "Bz"],
+        sdomlds = SDOMLDataset(
+            cache_max_size=1 * 512 * 512 * 4096,
+            years=["2010", "2011"],
+            data_to_load={
+                    "HMI": {
+                        "storage_location": "gcs",
+                        "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
+                        "channels": ["Bx", "By", "Bz"],
+                        },
+                    "AIA": {
+                        "storage_location": "gcs",
+                        "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
+                        "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
+                        },
+                    "EVE": {
+                        "storage_location": "gcs",
+                        "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
+                        "channels": ["O V", "Mg X", "Fe XI"],
                     },
-                "AIA": {
-                    "storage_location": "gcs",
-                    "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
-                    "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
-                    },
-                "EVE": {
-                    "storage_location": "gcs",
-                    "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
-                    "channels": ["O V", "Mg X", "Fe XI"],
                 },
-            },
-        )
-    ```
+            )
     """
 
     def __init__(
@@ -144,6 +133,10 @@ class SDOMLDataset(Dataset):
             index=np.arange(np.shape(self._selected_times)[0]),
             columns=["selected_times"],
         )
+
+        for darr in data_arr:
+            darr.set_years_channels()
+            darr.load_data_meta()
 
         self._loaded_data, self._loaded_meta, _ = zip(
             *[darr.data_meta_time for darr in data_arr]
