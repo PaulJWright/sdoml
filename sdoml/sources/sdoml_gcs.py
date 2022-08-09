@@ -69,22 +69,6 @@ class SDOAIA_gcs(GenericDataSource):
                 List of available channels (over all years)
 
         """
-        # Returns
-        # -------
-
-        # yc_dict: Dict[str, List[str]]
-        #     - Keys are the subset of years available from ``yrs``
-        #     - Values are the subset of channels available (from ``chnnls``)
-        #     for the given key (year)
-
-        # e.g.
-
-        # ```
-        # yc_dict = {
-        #     '2010': ['94A', '131A', '171A', ...],
-        #     '2011': ['94A', '131A', '171A', ...],
-        #     }
-        # ```
 
         yc_dict = {}
 
@@ -260,20 +244,6 @@ class SDOEVE_gcs(GenericDataSource):
 
         ```
         """
-        # Returns
-        # -------
-
-        # yc_dict: Dict[str, List[str]]
-        #     - Keys are the subset of years available from ``yrs``.
-        #     For EVE, this is just set to 'all'.
-        #     - Values are the subset of channels available (from ``chnnls``)
-        #     for the given key (year)
-
-        # e.g.
-        # ```
-        # yc_dict = {
-        #     'all': ['C III', 'Fe IX', ..., 'Si XII_2'],
-        #     }
 
         # The data is not stored per-year, but instead already combined
         yc_dict = {"all": []}
@@ -289,7 +259,7 @@ class SDOEVE_gcs(GenericDataSource):
         if not yc_dict:
             logging.error("Empty year/channel dictionary")
 
-        self._available_channels = solve_list(  # 3)
+        self._available_channels = solve_list(
             yc_dict["all"], self._meta["channels"]
         )
 
@@ -348,11 +318,9 @@ class SDOEVE_gcs(GenericDataSource):
             * len(self.available_channels)
         )
 
-        self._data_by_year = [loaded_data]  # 4)
-        self._meta_by_year = [dict_arr]  # 5)
-        self._time_by_year = time_yr  # 6)
-
-        # return ([loaded_data], [dict_arr], time_yr)
+        self._data_by_year = [loaded_data]
+        self._meta_by_year = [dict_arr]
+        self._time_by_year = time_yr
 
     def get_cotemporal_indices(
         self,
