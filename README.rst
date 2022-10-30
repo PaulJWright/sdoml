@@ -1,7 +1,9 @@
 SDOML dataset
 ---------------------
 
-SDOML is an open-source package for working with the SDOML Dataset (`sdoml.org <https://sdoml.org>`_).
+SDOML is an open-source package for working with the SDOML Dataset (`sdoml.org <https://sdoml.org>`_). 
+
+*This package is in development. Currently, it is intended for internal use only. The syntax is subject to change, and the documentation is incomplete.*
 
 Installation
 ------------
