@@ -42,29 +42,8 @@ class SDOMLDataset(Dataset):
         See [here](https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases)
         for a list of frequency aliases. By default this is ``120T`` (120 minutes)
 
-    data_to_load : Dict[str, Dict[str]]
-        A dictionary of instruments dictionaries to include.
-
-        Valid instruments :
-            - `AIA` : SDO Atomospheric Imaging Assembly
-            - `HMI` : SDO Helioseismic and Magnetic Imager
-            - `EVE` : Extreme UltraViolet Variability Experiment
-
-        Each instrument dictionary requires the following keys:
-
-        - storage_location: str
-            Storage location of the file.
-
-            Options :
-                - ``gcs`` : Google Cloud Storage
-
-        - root: str
-            Location of the root ``.zarr`` file within the ``storage_location``.
-            By default this is ``fdl-sdoml-v2/sdomlv2_small.zarr/`` (which is
-            located on Google Cloud Storage ``storage_location == gcs``).
-
-        - channels: List[str]
-            A list of channels to include from each instrument.
+    data_to_load : List[``~sdoml.sources.dataset_factory.DataSource``]
+        A list of ``~sdoml.sources.dataset_factory.DataSource``
 
     Examples
     --------
@@ -74,23 +53,7 @@ class SDOMLDataset(Dataset):
         sdomlds = SDOMLDataset(
             cache_max_size=1 * 512 * 512 * 4096,
             years=["2010", "2011"],
-            data_to_load={
-                    "HMI": {
-                        "storage_location": "gcs",
-                        "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
-                        "channels": ["Bx", "By", "Bz"],
-                        },
-                    "AIA": {
-                        "storage_location": "gcs",
-                        "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
-                        "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
-                        },
-                    "EVE": {
-                        "storage_location": "gcs",
-                        "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
-                        "channels": ["O V", "Mg X", "Fe XI"],
-                    },
-                },
+            data_to_load=[...]
             )
     """
 
@@ -99,7 +62,7 @@ class SDOMLDataset(Dataset):
         cache_max_size: Optional[int] = 1 * 512 * 512 * 2048,
         years: Optional[List[str]] = None,
         freq: str = "120T",
-        data_to_load: Optional[List[str]] = None,
+        data_to_load: List[DataSource] = None,
     ):
 
         # !TODO implement passing of ``selected_times`` and ``required_keys``
@@ -115,10 +78,11 @@ class SDOMLDataset(Dataset):
         self._meta = data_to_load
 
         # instantiate the appropriate classes
-        data_arr = [
-            DataSource(k, v, self._years, self._single_cache_max_size)
-            for k, v in data_to_load.items()
-        ]
+        data_arr = data_to_load  # !TODO remove before MR
+        # data_arr = [
+        #     DataSource(k, v, self._years, self._single_cache_max_size)
+        #     for k, v in data_to_load.items()
+        # ]
 
         # !TODO rearrange data for cadence (lowest to highest)
 
