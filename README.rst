@@ -5,6 +5,11 @@ SDOML dataset
     :target: https://sdoml.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
+.. image:: https://dl.circleci.com/status-badge/img/gh/PaulJWright/sdoml/tree/develop.svg?style=shield
+    :target: https://dl.circleci.com/status-badge/redirect/gh/PaulJWright/sdoml/tree/develop
+    :alt: CICD Status
+
+
 SDOML is an open-source package for working with the SDOML Dataset (`sdoml.org <https://sdoml.org>`_).
 
 *This package is in development. Currently, it is intended for internal use only. The syntax is subject to change, and the documentation is incomplete.*

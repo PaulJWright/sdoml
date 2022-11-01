@@ -1,9 +1,9 @@
 """
-Datasets are seperated into their own files with at least one class defined.
+Data sources are seperated into their own files with at least one class defined.
 
 As demonstrated in :py:meth:`~sdoml.sources.sdoml_gcs`, these should be children
-of the :py:meth:`sdoml.sources.data_base.GenericDataSource` parent class. While
-:py:meth:`sdoml.sources.data_base.GenericDataSource` isn't instantiated
+of the :py:meth:`~sdoml.sources.data_base.GenericDataSource` parent class. While
+:py:meth:`~sdoml.sources.data_base.GenericDataSource` isn't instantiated
 directly, this class described the attributes that should be set in the child
 class. e.g.
 

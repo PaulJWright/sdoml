@@ -50,7 +50,10 @@ extensions = [
     "sphinx_copybutton",
     "nbsphinx",
     "nbsphinx_link",
+    "sphinx.ext.graphviz",
 ]
+
+graphviz_output_format = "svg"
 
 #
 # https://nbsphinx.readthedocs.io/en/0.6.1/usage.html
