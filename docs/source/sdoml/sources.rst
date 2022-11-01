@@ -33,9 +33,10 @@ e.g. for :py:meth:`~sdoml.sources.sdoml_gcs.SDOML_AIA_GCS`, this is:
          and Path(str(meta["root"])).name == "sdomlv2_small.zarr"
       )
 
-where upon instantiation of the DataSource, if the instrument name is  ``aia``,
-the storage location ``gcs``, and the ``.zarr`` file, ``sdomlv2_small.zarr``,
-:py:meth:`~sdoml.sources.sdoml_gcs.SDOML_AIA_GCS` will be instantiated.
+where upon instantiation of the :py:meth:`~sdoml.sources.dataset_factory.DataSource`,
+if the instrument name is  ``aia``, the storage location ``gcs``, and the
+``.zarr`` file, ``sdomlv2_small.zarr``, :py:meth:`~sdoml.sources.sdoml_gcs.SDOML_AIA_GCS`
+will be instantiated.
 
 .. code-block:: python
 
