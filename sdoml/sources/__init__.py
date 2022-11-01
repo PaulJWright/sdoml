@@ -1,11 +1,11 @@
 """
 Data sources are seperated into their own files with at least one class defined.
 
-As demonstrated in :py:meth:`~sdoml.sources.sdoml_gcs`, these should be children
-of the :py:meth:`~sdoml.sources.data_base.GenericDataSource` parent class. While
+Here, :py:meth:`~sdoml.sources.data_base.GenericDataSource` is a generic ``DataSource``
+class from which all other ``DataSource`` classes inherit from. While
 :py:meth:`~sdoml.sources.data_base.GenericDataSource` isn't instantiated
 directly, this class described the attributes that should be set in the child
-class. e.g.
+class. e.g.:
 
 .. code-block:: python
 

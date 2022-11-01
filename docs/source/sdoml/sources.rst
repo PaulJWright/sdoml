@@ -10,6 +10,33 @@ Currently, ``sdoml`` contains a small number of available data sources,
 prefixed with ``SDOML``, that inherit from
 :py:meth:`~sdoml.sources.data_base.GenericDataSource`.
 
+Here, :py:meth:`~sdoml.sources.data_base.GenericDataSource` is a generic ``DataSource``
+class from which all other ``DataSource`` classes inherit from.
+Each of the children have a `datasource` method,
+e.g. :py:meth:`~sdoml.sources.sdoml_gcs.SDOML_AIA_GCS.datasource`,
+which provides information on what input parameters will lead to class instantiation
+e.g. for :py:meth:`~sdoml.sources.sdoml_gcs.SDOML_AIA_GCS`, this is:
+
+.. code-block:: python
+
+   @classmethod
+   def datasource(cls, instrument: str, meta: Dict) -> bool:
+      """
+      Determines if the combination of ``instrument``, ``storage_location``,
+      and filename (extracted from ``root``) should lead to the instantiation
+      of this child class
+      """
+      return (
+         instrument.lower() == "aia"
+         and str(meta["storage_location"]).lower() == "gcs"
+         and Path(str(meta["root"])).name == "sdomlv2_small.zarr"
+      )
+
+where upon instantiation of the DataSource, if the instrument name is  ``aia``,
+the storage location ``gcs``, and the ``.zarr`` file, ``sdomlv2_small.zarr``,
+:py:meth:`~sdoml.sources.sdoml_gcs.SDOML_AIA_GCS` will be instantiated.
+
 .. automodapi:: sdoml.sources
    :include-all-objects:
    :inherited-members:
+   :no-main-docstr:

@@ -11,8 +11,10 @@ Check out the :doc:`guide/index` section for further information, including how 
 :ref:`install <installation>` the project.
 
 .. note::
-
    This project is under active development.
+
+.. warning::
+   The API is not stable, and is subject to change.
 
 .. toctree::
    :caption: First Steps

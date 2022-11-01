@@ -6,11 +6,17 @@ SDOML Dataloader (``sdoml.dataloader``)
 .. toctree::
    :maxdepth: 1
 
-The initial implementation of ``sdoml`` provides a single dataloader/Dataset
+The initial implementation of ``sdoml`` provides a single dataloader
 class for the SDOML v2+ data located on the Google Cloud Platform.
 
-The :py:meth:`~sdoml.dataloader.SDOMLDataset` accepts `DataSource` objects.
-.. The :py:meth:`~sdoml.sources.GenericDataSource` object is a factory for generating
+The :py:meth:`~sdoml.dataloader.SDOMLDataset` instantiates ``DataSource``
+objects (see :ref:`sources`). When called,
+:py:meth:`~sdoml.sources.dataset_factory.DataSource` utilises the
+:py:meth:`~sdoml.sources.dataset_factory.DataSourceFactory` to instantiate one
+of the registered types which match the arguments provided. If the match
+exists, that type is used. If there are ``0`` or ``>=1`` matches,
+:py:meth:`~sunpy.map.map_factory.NoMatchError` or
+:py:meth:`~sunpy.map.map_factory.MultipleMatchError` will be raised.
 
 For example, to load HMI (Bx, By, Bz), AIA (94A, 131A), and EVE (O V, Fe XI) for
 2010, located in Google Cloud Storage (``gcs``)
@@ -40,6 +46,8 @@ For example, to load HMI (Bx, By, Bz), AIA (94A, 131A), and EVE (O V, Fe XI) for
       },
    )
 
+.. warning::
+   The API is not stable, and is subject to change.
 
 .. automodapi:: sdoml.dataloader
    :include-all-objects:
