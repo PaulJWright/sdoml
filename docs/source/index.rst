@@ -2,6 +2,7 @@
 
 .. sdoml_documentation:
 
+=================================
 Welcome to sdoml's documentation!
 =================================
 

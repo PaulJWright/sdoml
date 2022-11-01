@@ -1,5 +1,6 @@
-A brief tour of sdoml
-*********************
+=========================
+A Brief Tour of ``sdoml``
+=========================
 
 This brief tutorial will walk you through an overview of the SDOML Dataset
 and some of the functionality offered by the sdoml package.
@@ -36,3 +37,18 @@ This notebook demonstrates the process for interacting with a subset of the cura
 
 The SDOML Package
 -----------------
+
+Currently, the ``sdoml`` provides a rudimentary dataloader, which interacts with
+a limited set of data on Google Cloud Storage.
+
+Moving forward, the vision is to have a single dataloader that can be used across
+multiple machine learning tasks providing an instrument-agnostic method of
+loading and manipulating machine learning datasets in heliophysics.
+
+To get started check out the :doc:`../sdoml/examples/index` section!
+
+.. note::
+   This project is under active development.
+
+.. warning::
+   The API is not stable, and is subject to change.

@@ -5,7 +5,7 @@ Installation
 ============
 
 
-To use `sdoml`, first install it using pip:
+To use ``sdoml``, first install it using pip:
 
 .. code-block:: console
 
@@ -23,4 +23,4 @@ If you would like to access and use the data stored on the Google Cloud Platform
 Requirements
 ============
 
-`sdoml` requires Python 3.8, or higher.
+``sdoml`` requires Python 3.7, or higher.
