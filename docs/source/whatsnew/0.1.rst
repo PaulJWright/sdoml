@@ -1,0 +1,18 @@
+sdoml v0.1
+============================
+
+Version 0.1.0 is the initial development release of sdoml.
+
+.. _change-log-0.1-new:
+
+New Features
+------------
+
+* Developed `online documentation for sdoml
+  <https://docs.sdoml.org>`_ that is hosted by ....
+
+  - Automated documentation builds with Sphinx.
+
+* Created the `~sdoml.SDOMLDataset` dataloader.
+
+* Created the `~sdoml.sources.data_base.GenericDataSource`

@@ -47,7 +47,7 @@ __all__ = ["DataSourceFactory", "DataSource"]
 
 class DataSourceFactory(BasicRegistrationFactory):
     """
-    Data factory class. Used to create a variety of Data objects.
+    DataSource factory class. Used to create a variety of DataSource objects.
     Valid data structures are specified by registering them with the
     factory.
     """
