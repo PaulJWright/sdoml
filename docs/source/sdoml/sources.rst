@@ -40,6 +40,24 @@ the storage location ``gcs``, and the ``.zarr`` file, ``sdomlv2_small.zarr``,
 
 .. code-block:: python
 
+   data_to_load = {
+      "HMI": {
+            "storage_location": "gcs",
+            "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
+            "channels": ["Bx", "By", "Bz"],
+      },
+      "AIA": {
+            "storage_location": "gcs",
+            "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
+            "channels": ["94A", "131A"],
+      },
+      "EVE": {
+            "storage_location": "gcs",
+            "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
+            "channels": ["O V", "Fe XI"],
+      },
+   }
+
    years = ["2010", "2011"]
    cache_max_size = 1 * 512 * 512 * 2048
 

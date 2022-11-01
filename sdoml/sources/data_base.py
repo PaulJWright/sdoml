@@ -67,6 +67,9 @@ class GenericDataSource(ABC):
         # want to do checks here...
         self._instrument = instrument
         self._meta = meta
+
+        # !TODO I feel like we can address these later on;
+        # ... they can just be set by the dataloader
         self._requested_years = sorted(years)
         self._cache_size = cache_size
 
