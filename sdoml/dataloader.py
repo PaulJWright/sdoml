@@ -43,18 +43,37 @@ class SDOMLDataset(Dataset):
         for a list of frequency aliases. By default this is ``120T`` (120 minutes)
 
     data_to_load : List[``~sdoml.sources.dataset_factory.DataSource``]
-        A list of ``~sdoml.sources.dataset_factory.DataSource``
+        A list of :py:meth:``~sdoml.sources.dataset_factory.DataSource``
 
     Examples
     --------
 
     .. code-block:: python
 
+        data_to_load = {
+            "HMI": {
+                "storage_location": "gcs",
+                "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
+                "channels": ["Bx", "By", "Bz"],
+            },
+            "AIA": {
+                "storage_location": "gcs",
+                "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
+                "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
+            },
+        }
+
+        data_arr = [
+            DataSource(instrument=k, meta=v) for k, v in data_to_load.items()
+        ]
+
         sdomlds = SDOMLDataset(
             cache_max_size=1 * 512 * 512 * 4096,
             years=["2010", "2011"],
-            data_to_load=[...]
+            data_to_load=data_arr
             )
+
+
     """
 
     def __init__(
@@ -75,7 +94,12 @@ class SDOMLDataset(Dataset):
         self._cache_max_size = cache_max_size
         self._single_cache_max_size = self._cache_max_size / len(data_to_load)
         self._years = years
-        self._meta = data_to_load
+
+        d = {}
+        for item in data_to_load:
+            d = {**d, **{item._instrument: item._meta}}
+
+        self._meta = d.copy()
 
         # instantiate the appropriate classes
         data_arr = data_to_load  # !TODO remove before MR

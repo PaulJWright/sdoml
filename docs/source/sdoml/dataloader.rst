@@ -26,10 +26,12 @@ creation of ``datasource_arr`` was described in :doc:`sources`.
 
 .. code-block:: python
 
+   from sdoml import SDOMLDataset
+
    sdomlds = SDOMLDataset(
       cache_max_size=1 * 512 * 512 * 4096,
       years=["2010"],
-      data_to_load=datasource_arr, # this is a List[DataSource]
+      data_to_load=datasource_arr, # this is a List[``sdo.sources.DataSource``]
    )
 
 ``sdomlds`` can then be used as any other dataloader. If caching is implemented,
