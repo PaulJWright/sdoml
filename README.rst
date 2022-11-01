@@ -1,7 +1,13 @@
 SDOML dataset
 ---------------------
 
+.. image:: https://readthedocs.org/projects/sdoml/badge/?version=latest
+    :target: https://sdoml.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
 SDOML is an open-source package for working with the SDOML Dataset (`sdoml.org <https://sdoml.org>`_).
+
+*This package is in development. Currently, it is intended for internal use only. The syntax is subject to change, and the documentation is incomplete.*
 
 Installation
 ------------

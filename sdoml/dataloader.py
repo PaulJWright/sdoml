@@ -13,6 +13,8 @@ from torch.utils.data import Dataset
 
 from sdoml.sources.dataset_factory import DataSource
 
+__all__ = ["SDOMLDataset"]
+
 # -- Setting up logging
 logger = logging.getLogger(__name__)
 logging.getLogger("sdoml").addHandler(logging.NullHandler())
@@ -24,44 +26,44 @@ class SDOMLDataset(Dataset):
 
     Parameters
     ----------
-    cache_max_size: int, Nonetype, optional
+
+    cache_max_size : Optional[Union[int, None]]
         The maximum size that the ``zarr`` cache may grow to,
         in number of bytes. By default this variable is 1 * 512 * 512 * 2048.
         If the variable is set to ``None``, the cache will have unlimited size.
         see https://zarr.readthedocs.io/en/stable/api/storage.html#zarr.storage.LRUStoreCache
 
-    years: List[str], Nonetype, optional
+    years : Optional[Union[List[str], None]]
         A list of years to include. By default this
         variable is ``2010`` which will return data for 2010 only.
 
-    freq: str, optional
+    freq : Optional[Union[str, None]]
         A string representing the frequency at which data should be obtained.
         See [here](https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases)
         for a list of frequency aliases. By default this is ``120T`` (120 minutes)
 
-    data_to_load: Dict[str, Dict[str]]
+    data_to_load : Dict[str, Dict[str]]
         A dictionary of instruments dictionaries to include.
 
         Valid instruments :
-            `AIA` : SDO Atomospheric Imaging Assembly
-            `HMI` : SDO Helioseismic and Magnetic Imager
-            `EVE` : Extreme UltraViolet Variability Experiment
+            - `AIA` : SDO Atomospheric Imaging Assembly
+            - `HMI` : SDO Helioseismic and Magnetic Imager
+            - `EVE` : Extreme UltraViolet Variability Experiment
 
-    Each instrument dictionary requires the following keys:
+        Each instrument dictionary requires the following keys:
 
-
-        storage_location: str
+        - storage_location: str
             Storage location of the file.
 
             Options :
                 - ``gcs`` : Google Cloud Storage
 
-        root: str
+        - root: str
             Location of the root ``.zarr`` file within the ``storage_location``.
             By default this is ``fdl-sdoml-v2/sdomlv2_small.zarr/`` (which is
             located on Google Cloud Storage ``storage_location == gcs``).
 
-        channels: List[str]
+        - channels: List[str]
             A list of channels to include from each instrument.
 
     Examples
@@ -96,7 +98,7 @@ class SDOMLDataset(Dataset):
         self,
         cache_max_size: Optional[int] = 1 * 512 * 512 * 2048,
         years: Optional[List[str]] = None,
-        freq="120T",
+        freq: str = "120T",
         data_to_load: Optional[List[str]] = None,
     ):
 

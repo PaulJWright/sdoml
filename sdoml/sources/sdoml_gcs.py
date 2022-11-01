@@ -22,13 +22,13 @@ from sdoml.utils.utils import (
 # from Python 3.9+, use dict, list, tuple; see PEP 585
 
 
-__all__ = ["SDOAIA_gcs", "SDOHMI_gcs", "SDOEVE_gcs"]
+__all__ = ["SDOML_AIA_GCS", "SDOML_HMI_GCS", "SDOML_EVE_GCS"]
 
 # MEGS-A is depreacated; these years are a constant.
 EVE_MEGSA_YEARS = ["2010", "2011", "2012", "2014"]
 
 
-class SDOAIA_gcs(GenericDataSource):
+class SDOML_AIA_GCS(GenericDataSource):
     """
     Data class for SDO/AIA located on GCS under the ``fdl-sdoml-v2`` bucket.
 
@@ -51,6 +51,12 @@ class SDOAIA_gcs(GenericDataSource):
     """
 
     def __init__(self, instrument, meta, years, cache_size, **kwargs):
+        """
+
+        Parameters
+        ----------
+
+        """
         super().__init__(instrument, meta, years, cache_size, **kwargs)
 
         # Set the time format of the data
@@ -112,7 +118,7 @@ class SDOAIA_gcs(GenericDataSource):
 
     def load_data_meta(self) -> None:
         """
-        Method to load SDO/AIA data from the ``.zarr`` file on GCS
+        Loads SDO/AIA data from the ``.zarr`` file on GCS
 
         This method should set:
 
@@ -127,6 +133,12 @@ class SDOAIA_gcs(GenericDataSource):
             - self._time_by_year: np.ndarray:
                 contains observation time per year, and per channel,
                 e.g. ``time_yr[year_index][channel_index]``
+
+
+        Parameters
+        ----------
+            self
+
         """
         super().load_data_meta()
 
@@ -151,11 +163,9 @@ class SDOAIA_gcs(GenericDataSource):
                 data_years.extend(item[idx]["T_OBS"])
             time_yr.append(np.array(data_years))
 
-        time_yr = np.array(time_yr, dtype="object")
-
         self._data_by_year = by_year
         self._meta_by_year = meta_yr
-        self._time_by_year = time_yr
+        self._time_by_year = np.array(time_yr, dtype="object")
 
     @classmethod
     def datasource(cls, instrument: str, meta: Dict) -> bool:
@@ -171,7 +181,7 @@ class SDOAIA_gcs(GenericDataSource):
         )
 
 
-class SDOHMI_gcs(SDOAIA_gcs):
+class SDOML_HMI_GCS(SDOML_AIA_GCS):
     """
     Data class for SDO/HMI located on GCS under the ``fdl-sdoml-v2`` bucket.
     As ``SDOAIA_gcs`` with ``self._time_format`` where the data is stored in
@@ -189,6 +199,12 @@ class SDOHMI_gcs(SDOAIA_gcs):
     """
 
     def __init__(self, instrument, meta, years, cache_size, **kwargs):
+        """
+
+        Parameters
+        ----------
+
+        """
         super().__init__(instrument, meta, years, cache_size, **kwargs)
 
         # Main difference between AIA and HMI data is the time format.
@@ -208,7 +224,7 @@ class SDOHMI_gcs(SDOAIA_gcs):
         )
 
 
-class SDOEVE_gcs(GenericDataSource):
+class SDOML_EVE_GCS(GenericDataSource):
     """
     Data class for SDO/EVE(MEGS-A) located on GCS under the ``fdl-sdoml-v2``
     bucket. As ``SDOAIA_gcs`` with ``self._time_format`` where the data is
@@ -228,6 +244,12 @@ class SDOEVE_gcs(GenericDataSource):
     """
 
     def __init__(self, instrument, meta, years, cache_size=None, **kwargs):
+        """
+
+        Parameters
+        ----------
+
+        """
         super().__init__(instrument, meta, years, cache_size=None, **kwargs)
 
         # set the time_format
@@ -239,10 +261,9 @@ class SDOEVE_gcs(GenericDataSource):
         Determine the available years and channels.
 
         As EVE only has data for 2010 - 2014, this method only
-        sets self._available_channels; self._available_years is
-        set to ``EVE_MEGSA_YEARS`` in __init__
+        sets ``self._available_channels``; ``self._available_years`` is
+        set to ``EVE_MEGSA_YEARS`` in ``__init__``
 
-        ```
         """
 
         # The data is not stored per-year, but instead already combined
@@ -265,13 +286,9 @@ class SDOEVE_gcs(GenericDataSource):
 
     def load_data_meta(self) -> None:
         """
-        Method to load SDO/EVE data from the ``.zarr`` file on GCS, return
-        the ``loaded_data``, the metadata as array of dictionaries ``dict_arr``,
-        and a ``np.ndarray`` of the time information for each cahnnel.
+        Load SDO/EVE data from the ``.zarr`` file on GCS, return.
 
-        Returns
-        -------
-        (loaded_data, dict_arr, time_yr): Tuple(List, List):
+        This method should set:
 
             - loaded_data: List:
                 contains the data loaded per year, and per channel,
@@ -330,7 +347,7 @@ class SDOEVE_gcs(GenericDataSource):
     ) -> pd.DataFrame:
 
         """
-        Method to return a ``pd.DataFrame`` with co-temporal EVE data for
+        Returns a ``pd.DataFrame`` with co-temporal EVE data for
         ``self._available_channels``.
 
         This method replaces ``get_cotemporal_indices`` in the parent class

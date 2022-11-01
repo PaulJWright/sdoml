@@ -1,5 +1,5 @@
 """
-GenericDataSource is a generic DataSource class from which
+``GenericDataSource`` is a generic ``DataSource`` class from which
 all other DataSource classes inherit from.
 """
 
@@ -81,12 +81,12 @@ class GenericDataSource(ABC):
         # the following can be an output of ``self.load_data_meta()``
         self._data_by_year: List
         self._meta_by_year: List
-        self._time_by_year: np.ndarrsay
+        self._time_by_year: np.ndarray
         # --
 
     def __repr__(self):
         """
-        Reutnr the class attributes
+        Return the class attributes
         """
         return ", \n".join((f"{k}: {v}" for k, v in vars(self).items()))
 
@@ -167,7 +167,8 @@ class GenericDataSource(ABC):
         """
 
         if self._available_years is None or self._available_channels is None:
-            msg = "self._available_years or self._available_years is None"
+            msg = "self._available_years or self._available_years is None. "
+            "Run ``self.set_years_channels()`` first."
             raise ValueError(msg)
 
     def get_cotemporal_indices(
