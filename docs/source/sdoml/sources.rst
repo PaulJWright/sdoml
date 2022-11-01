@@ -37,6 +37,17 @@ where upon instantiation of the DataSource, if the instrument name is  ``aia``,
 the storage location ``gcs``, and the ``.zarr`` file, ``sdomlv2_small.zarr``,
 :py:meth:`~sdoml.sources.sdoml_gcs.SDOML_AIA_GCS` will be instantiated.
 
+
+.. code-block:: python
+
+   years = ["2010", "2011"]
+   cache_max_size = 1 * 512 * 512 * 2048
+
+   data_arr = [
+      DataSource(k, v, years, cache_max_size/len(data_to_load.items()))
+      for k, v in data_to_load.items()
+   ]
+
 .. automodapi:: sdoml.sources
    :include-all-objects:
    :inherited-members:
