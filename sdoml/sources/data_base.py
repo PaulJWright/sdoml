@@ -59,8 +59,8 @@ class GenericDataSource(ABC):
         self,
         instrument: str,
         meta: Dict,
-        years: List,
-        cache_size: int,
+        # years: List,
+        # cache_size: int,
         **kwargs,
     ) -> None:
 
@@ -70,8 +70,8 @@ class GenericDataSource(ABC):
 
         # !TODO I feel like we can address these later on;
         # ... they can just be set by the dataloader
-        self._requested_years = sorted(years)
-        self._cache_size = cache_size
+        self._requested_years = None  # sorted(years)
+        self._cache_size = None  # cache_size
 
         #  -- Set some attributes that need to be updated in the child classes
         #

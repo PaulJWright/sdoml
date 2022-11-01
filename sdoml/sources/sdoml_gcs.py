@@ -50,14 +50,14 @@ class SDOML_AIA_GCS(GenericDataSource):
 
     """
 
-    def __init__(self, instrument, meta, years, cache_size, **kwargs):
+    def __init__(self, instrument, meta, **kwargs):
         """
 
         Parameters
         ----------
 
         """
-        super().__init__(instrument, meta, years, cache_size, **kwargs)
+        super().__init__(instrument, meta, **kwargs)
 
         # Set the time format of the data
         self._time_format = "%Y-%m-%dT%H:%M:%S.%fZ"
@@ -77,6 +77,9 @@ class SDOML_AIA_GCS(GenericDataSource):
         """
 
         yc_dict = {}
+
+        if self._requested_years is None:
+            raise ValueError("No years requested.")
 
         # go through years, and channels ensuring we can read the data
         for i, channel in enumerate(self._meta["channels"]):
@@ -142,6 +145,9 @@ class SDOML_AIA_GCS(GenericDataSource):
         """
         super().load_data_meta()
 
+        if self._cache_size is None:
+            raise ValueError("``self._cache_size`` is None")
+
         by_year, meta_yr = [], []
         for yr in self._available_years:
             data = [
@@ -198,14 +204,14 @@ class SDOML_HMI_GCS(SDOML_AIA_GCS):
             └── Bz (25540, 512, 512) float32
     """
 
-    def __init__(self, instrument, meta, years, cache_size, **kwargs):
+    def __init__(self, instrument, meta, **kwargs):
         """
 
         Parameters
         ----------
 
         """
-        super().__init__(instrument, meta, years, cache_size, **kwargs)
+        super().__init__(instrument, meta, **kwargs)
 
         # Main difference between AIA and HMI data is the time format.
         self._time_format = "%Y.%m.%d_%H:%M:%S_TAI"
@@ -243,14 +249,14 @@ class SDOML_EVE_GCS(GenericDataSource):
             └── Time (2137380,) <U23
     """
 
-    def __init__(self, instrument, meta, years, cache_size=None, **kwargs):
+    def __init__(self, instrument, meta, **kwargs):
         """
 
         Parameters
         ----------
 
         """
-        super().__init__(instrument, meta, years, cache_size=None, **kwargs)
+        super().__init__(instrument, meta, **kwargs)
 
         # set the time_format
         self._time_format = "%Y-%m-%d %H:%M:%S.%f"
@@ -268,6 +274,9 @@ class SDOML_EVE_GCS(GenericDataSource):
 
         # The data is not stored per-year, but instead already combined
         yc_dict = {"all": []}
+
+        if self._requested_years is None:
+            raise ValueError("No years requested.")
 
         for channel in self._meta["channels"]:
             path_to_data = os.path.join(self._meta["root"], "MEGS-A", channel)
@@ -302,6 +311,9 @@ class SDOML_EVE_GCS(GenericDataSource):
                 e.g. ``time_yr[year_index][channel_index]``
         """
         super().load_data_meta()
+
+        if self._cache_size is None:
+            raise ValueError("``self._cache_size`` is None")
 
         loaded_data = [
             load_single_gcs_zarr(

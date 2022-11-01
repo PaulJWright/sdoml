@@ -84,12 +84,18 @@ class SDOMLDataset(Dataset):
         #     for k, v in data_to_load.items()
         # ]
 
+        for datum in data_arr:
+            # !TODO change this to use methods
+            datum._requested_years = self._years
+            datum._cache_size = self._single_cache_max_size
+
         # !TODO rearrange data for cadence (lowest to highest)
 
         if selected_times:
             # check the provided selected times are in agreement with the data
             # self.selected_times = self._check_selected_times(selected_times)
-            raise NotImplementedError
+            msg = "``selected_times`` is not implemented"
+            raise NotImplementedError(msg)
         else:
             self._selected_times = self._select_times(freq)
 
@@ -242,7 +248,7 @@ class SDOMLDataset(Dataset):
         """
         Generate ``pd.date_range`` based on the provided years, ``self._years``
         """
-        # !TODO modify this for sitatuions where years aren't contiguous
+        # !TODO modify this for situations where years aren't contiguous
         return pd.date_range(
             start=date(int(self._years[0]), 1, 1),
             end=date(int(self._years[-1]), 12, 31),
@@ -304,27 +310,34 @@ if __name__ == "__main__":
     )
     start = timeit.default_timer()
 
+    data_to_load = {
+        "HMI": {
+            "storage_location": "gcs",
+            "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
+            "channels": ["Bx", "By", "Bz"],
+        },  # 12 minute cadence
+        "AIA": {
+            "storage_location": "gcs",
+            "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
+            "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
+        },  # 6 minute cadence
+        "EVE": {
+            "storage_location": "gcs",
+            "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
+            "channels": ["O V", "Mg X", "Fe XI"],
+        },  # 1 minute candece
+    }
+
+    data_arr = [
+        DataSource(instrument=k, meta=v) for k, v in data_to_load.items()
+    ]
+
     sdomlds = SDOMLDataset(
         cache_max_size=1 * 512 * 512 * 4096,
         years=["2010", "2011"],
-        data_to_load={
-            "HMI": {
-                "storage_location": "gcs",
-                "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
-                "channels": ["Bx", "By", "Bz"],
-            },  # 12 minute cadence
-            "AIA": {
-                "storage_location": "gcs",
-                "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
-                "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
-            },  # 6 minute cadence
-            "EVE": {
-                "storage_location": "gcs",
-                "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
-                "channels": ["O V", "Mg X", "Fe XI"],
-            },  # 1 minute candece
-        },
+        data_to_load=data_arr,
     )
+
     end = timeit.default_timer()
 
     logging.info(f" sdomlds.dataframe \n {pformat(sdomlds.dataframe)} \n \n")
