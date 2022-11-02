@@ -59,8 +59,6 @@ class GenericDataSource(ABC):
         self,
         instrument: str,
         meta: Dict,
-        # years: List,
-        # cache_size: int,
         **kwargs,
     ) -> None:
 
