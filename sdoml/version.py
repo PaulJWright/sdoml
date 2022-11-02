@@ -7,4 +7,4 @@ try:
     __version__ = get_version(root="..", relative_to=__file__)
 
 except Exception:
-    __version__ = "0.1.dev42+gfc37a40.d20220807"
+    __version__ = "0.1.dev16+g5db4c84.d20221101"
