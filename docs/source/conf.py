@@ -47,18 +47,24 @@ extensions = [
     # 'sphinx.ext.autosummary',
     "sphinx_rtd_theme",
     # 'sphinx_gallery.gen_gallery',
-    "sphinx_copybutton",
+    # "sphinx_copybutton",
     "nbsphinx",
     "nbsphinx_link",
     "sphinx.ext.graphviz",
+    "sphinx_toggleprompt",
 ]
 
+# graphviz output as "svg"
 graphviz_output_format = "svg"
+
+# move `>>>` 35 stops to the right
+# https://sphinx-toggleprompt.readthedocs.io/en/stable/
+# toggleprompt_offset_right = 35
 
 #
 # https://nbsphinx.readthedocs.io/en/0.6.1/usage.html
 nbsphinx_execute_arguments = [
-    "--InlineBackend.figure_formats={'png'}",
+    "--InlineBackend.figure_formats={'svg', 'pdf'}",
     "--InlineBackend.rc={'figure.dpi': 96}",
 ]
 
@@ -90,6 +96,7 @@ intersphinx_mapping = {
     "matplotlib": ("https://matplotlib.org/stable", None),
     "aiapy": ("https://aiapy.readthedocs.io/en/stable/", None),
     "sunpy": ("https://docs.sunpy.org/en/stable/", None),
+    "typing": ("https://typing.readthedocs.io/en/latest/", None),
 }
 
 # -- Options for HTML output -------------------------------------------------

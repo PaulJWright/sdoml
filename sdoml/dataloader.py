@@ -11,7 +11,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from sdoml.sources.dataset_factory import DataSource
+from sdoml.sources import DataSource
 
 __all__ = ["SDOMLDataset"]
 
@@ -39,59 +39,48 @@ class SDOMLDataset(Dataset):
 
     freq : Optional[Union[str, None]]
         A string representing the frequency at which data should be obtained.
-        See [here](https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases)
+        See https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
         for a list of frequency aliases. By default this is ``120T`` (120 minutes)
 
-    data_to_load : Dict[str, Dict[str]]
-        A dictionary of instruments dictionaries to include.
+    data_to_load : List[:py:meth:`~sdoml.sources.DataSource`]
+        A list of :py:meth:`~sdoml.sources.DataSource` objects
 
-        Valid instruments :
-            - `AIA` : SDO Atomospheric Imaging Assembly
-            - `HMI` : SDO Helioseismic and Magnetic Imager
-            - `EVE` : Extreme UltraViolet Variability Experiment
+    Example
+    -------
 
-        Each instrument dictionary requires the following keys:
+    Define the data that we would like. For simplicity, this is is written as
+    a nested dictionary, with each instrument having a dictionary that contains
+    the ``storage_location``, ``root`` ``.zarr`` file, and ``channels`` required.
 
-        - storage_location: str
-            Storage location of the file.
+    >>> data_to_load = {
+    ...     "HMI": {
+    ...         "storage_location": "gcs",
+    ...         "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
+    ...         "channels": ["Bx", "By", "Bz"],
+    ...     },
+    ...     "AIA": {
+    ...         "storage_location": "gcs",
+    ...         "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
+    ...         "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
+    ...     },
+    ... }
 
-            Options :
-                - ``gcs`` : Google Cloud Storage
+    Utilising :py:meth:`~sdoml.sources.DataSource`, ``datasource_arr`` is a `List`
+    of ``DataSource`` objects
 
-        - root: str
-            Location of the root ``.zarr`` file within the ``storage_location``.
-            By default this is ``fdl-sdoml-v2/sdomlv2_small.zarr/`` (which is
-            located on Google Cloud Storage ``storage_location == gcs``).
+    >>> datasource_arr = [
+    ...         DataSource(instrument=k, meta=v) for k, v in data_to_load.items()
+    ...     ]
 
-        - channels: List[str]
-            A list of channels to include from each instrument.
+    ``datasource_arr`` is passed to :py:meth:`~sdoml.dataloader.SDOMLDataset`, along
+    with the maximum cache size (``cache_max_size``), and years requested (``years``)
 
-    Examples
-    --------
+    >>> sdomlds = SDOMLDataset(
+    ...         cache_max_size=1 * 512 * 512 * 4096,
+    ...         years=["2010", "2011"],
+    ...         data_to_load=datasource_arr,
+    ...     )
 
-    .. code-block:: python
-
-        sdomlds = SDOMLDataset(
-            cache_max_size=1 * 512 * 512 * 4096,
-            years=["2010", "2011"],
-            data_to_load={
-                    "HMI": {
-                        "storage_location": "gcs",
-                        "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
-                        "channels": ["Bx", "By", "Bz"],
-                        },
-                    "AIA": {
-                        "storage_location": "gcs",
-                        "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
-                        "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
-                        },
-                    "EVE": {
-                        "storage_location": "gcs",
-                        "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
-                        "channels": ["O V", "Mg X", "Fe XI"],
-                    },
-                },
-            )
     """
 
     def __init__(
@@ -99,7 +88,7 @@ class SDOMLDataset(Dataset):
         cache_max_size: Optional[int] = 1 * 512 * 512 * 2048,
         years: Optional[List[str]] = None,
         freq: str = "120T",
-        data_to_load: Optional[List[str]] = None,
+        data_to_load: List[DataSource] = None,
     ):
 
         # !TODO implement passing of ``selected_times`` and ``required_keys``
@@ -112,20 +101,33 @@ class SDOMLDataset(Dataset):
         self._cache_max_size = cache_max_size
         self._single_cache_max_size = self._cache_max_size / len(data_to_load)
         self._years = years
-        self._meta = data_to_load
+
+        # create a dictionary of dictionaries from ``data_to_load``
+        self._meta = {}
+        [
+            self._meta.update(**{item._instrument: item._meta})
+            for item in data_to_load
+        ]
 
         # instantiate the appropriate classes
-        data_arr = [
-            DataSource(k, v, self._years, self._single_cache_max_size)
-            for k, v in data_to_load.items()
-        ]
+        data_arr = data_to_load  # !TODO remove before MR
+        # data_arr = [
+        #     DataSource(k, v, self._years, self._single_cache_max_size)
+        #     for k, v in data_to_load.items()
+        # ]
+
+        for datum in data_arr:
+            # !TODO change this to use methods
+            datum._requested_years = self._years
+            datum._cache_size = self._single_cache_max_size
 
         # !TODO rearrange data for cadence (lowest to highest)
 
         if selected_times:
             # check the provided selected times are in agreement with the data
             # self.selected_times = self._check_selected_times(selected_times)
-            raise NotImplementedError
+            msg = "``selected_times`` is not implemented"
+            raise NotImplementedError(msg)
         else:
             self._selected_times = self._select_times(freq)
 
@@ -278,7 +280,7 @@ class SDOMLDataset(Dataset):
         """
         Generate ``pd.date_range`` based on the provided years, ``self._years``
         """
-        # !TODO modify this for sitatuions where years aren't contiguous
+        # !TODO modify this for situations where years aren't contiguous
         return pd.date_range(
             start=date(int(self._years[0]), 1, 1),
             end=date(int(self._years[-1]), 12, 31),
@@ -340,27 +342,34 @@ if __name__ == "__main__":
     )
     start = timeit.default_timer()
 
+    data_to_load = {
+        "HMI": {
+            "storage_location": "gcs",
+            "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
+            "channels": ["Bx", "By", "Bz"],
+        },  # 12 minute cadence
+        "AIA": {
+            "storage_location": "gcs",
+            "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
+            "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
+        },  # 6 minute cadence
+        "EVE": {
+            "storage_location": "gcs",
+            "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
+            "channels": ["O V", "Mg X", "Fe XI"],
+        },  # 1 minute candece
+    }
+
+    data_arr = [
+        DataSource(instrument=k, meta=v) for k, v in data_to_load.items()
+    ]
+
     sdomlds = SDOMLDataset(
         cache_max_size=1 * 512 * 512 * 4096,
         years=["2010", "2011"],
-        data_to_load={
-            "HMI": {
-                "storage_location": "gcs",
-                "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
-                "channels": ["Bx", "By", "Bz"],
-            },  # 12 minute cadence
-            "AIA": {
-                "storage_location": "gcs",
-                "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
-                "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
-            },  # 6 minute cadence
-            "EVE": {
-                "storage_location": "gcs",
-                "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
-                "channels": ["O V", "Mg X", "Fe XI"],
-            },  # 1 minute candece
-        },
+        data_to_load=data_arr,
     )
+
     end = timeit.default_timer()
 
     logging.info(f" sdomlds.dataframe \n {pformat(sdomlds.dataframe)} \n \n")

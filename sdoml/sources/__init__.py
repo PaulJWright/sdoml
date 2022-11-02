@@ -25,4 +25,5 @@ see :py:meth:`~sdoml.sources.sdoml_gcs`.
 """
 
 from .data_base import *
+from .dataset_factory import *
 from .sdoml_gcs import *

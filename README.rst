@@ -9,6 +9,8 @@ SDOML dataset
     :target: https://dl.circleci.com/status-badge/redirect/gh/PaulJWright/sdoml/tree/develop
     :alt: CICD Status
 
+.. image:: https://mybinder.org/badge_logo.svg
+ :target: https://mybinder.org/v2/gh/pauljwright/sdoml/develop?urlpath=https%3A%2F%2Fgithub.com%2FPaulJWright%2Fsdoml%2Ftree%2Fdevelop%2Fexamples%2Fdataset
 
 SDOML is an open-source package for working with the SDOML Dataset (`sdoml.org <https://sdoml.org>`_).
 

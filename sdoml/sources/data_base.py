@@ -23,9 +23,9 @@ class GenericDataSource(ABC):
     """
     Generic DataSource Class to be inherited by specific DataSource classes.
 
-    The following attributes should be set in the child class:
+    The following attributes should be set in the subclass:
 
-    .. code-block :: python
+    .. code-block:: python
 
         self._time_format : str                 # e.g. %Y-%m-%dT%H:%M:%S.%fZ
 
@@ -59,18 +59,19 @@ class GenericDataSource(ABC):
         self,
         instrument: str,
         meta: Dict,
-        years: List,
-        cache_size: int,
         **kwargs,
     ) -> None:
 
         # want to do checks here...
         self._instrument = instrument
         self._meta = meta
-        self._requested_years = sorted(years)
-        self._cache_size = cache_size
 
-        #  -- Set some attributes that need to be updated in the child classes
+        # !TODO I feel like we can address these later on;
+        # ... they can just be set by the dataloader
+        self._requested_years = None  # sorted(years)
+        self._cache_size = None  # cache_size
+
+        #  -- Set some attributes that need to be updated in the subclasses
         #
         self._time_format: str
         #
@@ -352,6 +353,6 @@ class GenericDataSource(ABC):
     @abstractmethod
     def datasource(cls) -> bool:
         """
-        Determines if the child class should be instantiated
+        Determines if the subclass should be instantiated
         """
         return NotImplementedError

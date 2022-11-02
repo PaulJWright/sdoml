@@ -1,56 +1,54 @@
 .. _dataloader:
 
-=======================================
-SDOML Dataloader (``sdoml.dataloader``)
-=======================================
+=================================
+Dataloader (``sdoml.dataloader``)
+=================================
 
 .. toctree::
    :maxdepth: 1
 
-The initial implementation of ``sdoml`` provides a single dataloader
+This initial implementation of ``sdoml`` provides a single torch dataloader
 class for the SDOML v2+ data located on the Google Cloud Platform.
 
-The :py:meth:`~sdoml.dataloader.SDOMLDataset` instantiates ``DataSource``
-objects (see :ref:`sources`). When called,
-:py:meth:`~sdoml.sources.dataset_factory.DataSource` utilises the
-:py:meth:`~sdoml.sources.dataset_factory.DataSourceFactory` to instantiate one
-of the registered types which match the arguments provided. If the match
-exists, that type is used. If there are ``0`` or ``>=1`` matches,
-:py:meth:`~sunpy.map.map_factory.NoMatchError` or
-:py:meth:`~sunpy.map.map_factory.MultipleMatchError` will be raised.
-
-For example, to load HMI (Bx, By, Bz), AIA (94A, 131A), and EVE (O V, Fe XI) for
-2010, located in Google Cloud Storage (``gcs``)
-:py:meth:`~sdoml.dataloader.SDOMLDataset` can be called as follows:
-
-.. code-block:: python
-
-   sdomlds = SDOMLDataset(
-      cache_max_size=1 * 512 * 512 * 4096,
-      years=["2010"],
-      data_to_load={
-         "HMI": {
-               "storage_location": "gcs",
-               "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
-               "channels": ["Bx", "By", "Bz"],
-         },
-         "AIA": {
-               "storage_location": "gcs",
-               "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
-               "channels": ["94A", "131A"],
-         },
-         "EVE": {
-               "storage_location": "gcs",
-               "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
-               "channels": ["O V", "Fe XI"],
-         },
-      },
-   )
+The :py:meth:`~sdoml.dataloader.SDOMLDataset` accepts a List of ``DataSource``
+objects (see :ref:`sources`).
 
 .. warning::
    The API is not stable, and is subject to change.
 
 .. automodapi:: sdoml.dataloader
+   :no-heading:
    :include-all-objects:
    :inherited-members:
    :no-inheritance-diagram:
+
+
+Example
+-------
+
+If the user wishes to load HMI (Bx, By, Bz), AIA (94 Å, 131 Å), and EVE (O V, Fe XI) from the year 2010,
+:py:meth:`~sdoml.dataloader.SDOMLDataset` can be called as follows, where the
+creation of ``datasource_arr`` was described in :doc:`sources`.
+
+.. code-block:: python
+
+   >>> from sdoml import SDOMLDataset
+   >>> sdomlds = SDOMLDataset(
+   ...    cache_max_size=1 * 512 * 512 * 4096,
+   ...    years=["2010"],
+   ...    data_to_load=datasource_arr, # this is a List[``sdo.sources.DataSource``]
+   ... )
+   >>> dataloader = torch.utils.data.DataLoader(
+   ...    sdomlds,
+   ...    batch_size=1,
+   ...    shuffle=False,
+   ... )
+
+For detailed examples see, :doc:`examples/index`.
+
+.. note::
+
+   If caching is implemented, the second request on an index will be quicker. e.g.:
+
+   >>> first ``sdomlds.__getitem__(0)`` request took 69.02 seconds
+   >>> second ``sdomlds.__getitem__(0)`` request took 0.54 seconds
