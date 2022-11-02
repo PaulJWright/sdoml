@@ -39,7 +39,7 @@ class SDOMLDataset(Dataset):
 
     freq : Optional[Union[str, None]]
         A string representing the frequency at which data should be obtained.
-        See :ref:`pandas docs <https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases>`__
+        See https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
         for a list of frequency aliases. By default this is ``120T`` (120 minutes)
 
     data_to_load : List[:py:meth:`~sdoml.sources.DataSource`]
@@ -102,11 +102,12 @@ class SDOMLDataset(Dataset):
         self._single_cache_max_size = self._cache_max_size / len(data_to_load)
         self._years = years
 
-        d = {}
-        for item in data_to_load:
-            d = {**d, **{item._instrument: item._meta}}
-
-        self._meta = d.copy()
+        # create a dictionary of dictionaries from ``data_to_load``
+        self._meta = {}
+        [
+            self._meta.update(**{item._instrument: item._meta})
+            for item in data_to_load
+        ]
 
         # instantiate the appropriate classes
         data_arr = data_to_load  # !TODO remove before MR
