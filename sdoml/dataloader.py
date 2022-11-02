@@ -11,7 +11,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from sdoml.sources.dataset_factory import DataSource
+from sdoml.sources import DataSource
 
 __all__ = ["SDOMLDataset"]
 
@@ -39,40 +39,47 @@ class SDOMLDataset(Dataset):
 
     freq : Optional[Union[str, None]]
         A string representing the frequency at which data should be obtained.
-        See [here](https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases)
+        See :ref:`pandas docs <https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases>`__
         for a list of frequency aliases. By default this is ``120T`` (120 minutes)
 
-    data_to_load : List[``~sdoml.sources.dataset_factory.DataSource``]
-        A list of :py:meth:``~sdoml.sources.dataset_factory.DataSource``
+    data_to_load : List[:py:meth:`~sdoml.sources.DataSource`]
+        A list of :py:meth:`~sdoml.sources.DataSource` objects
 
-    Examples
-    --------
+    Example
+    -------
 
-    .. code-block:: python
+    Define the data that we would like. For simplicity, this is is written as
+    a nested dictionary, with each instrument having a dictionary that contains
+    the ``storage_location``, ``root`` ``.zarr`` file, and ``channels`` required.
 
-        data_to_load = {
-            "HMI": {
-                "storage_location": "gcs",
-                "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
-                "channels": ["Bx", "By", "Bz"],
-            },
-            "AIA": {
-                "storage_location": "gcs",
-                "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
-                "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
-            },
-        }
+    >>> data_to_load = {
+    ...     "HMI": {
+    ...         "storage_location": "gcs",
+    ...         "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
+    ...         "channels": ["Bx", "By", "Bz"],
+    ...     },
+    ...     "AIA": {
+    ...         "storage_location": "gcs",
+    ...         "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
+    ...         "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
+    ...     },
+    ... }
 
-        data_arr = [
-            DataSource(instrument=k, meta=v) for k, v in data_to_load.items()
-        ]
+    Utilising :py:meth:`~sdoml.sources.DataSource`, ``datasource_arr`` is a `List`
+    of ``DataSource`` objects
 
-        sdomlds = SDOMLDataset(
-            cache_max_size=1 * 512 * 512 * 4096,
-            years=["2010", "2011"],
-            data_to_load=data_arr
-            )
+    >>> datasource_arr = [
+    ...         DataSource(instrument=k, meta=v) for k, v in data_to_load.items()
+    ...     ]
 
+    ``datasource_arr`` is passed to :py:meth:`~sdoml.dataloader.SDOMLDataset`, along
+    with the maximum cache size (``cache_max_size``), and years requested (``years``)
+
+    >>> sdomlds = SDOMLDataset(
+    ...         cache_max_size=1 * 512 * 512 * 4096,
+    ...         years=["2010", "2011"],
+    ...         data_to_load=datasource_arr,
+    ...     )
 
     """
 
