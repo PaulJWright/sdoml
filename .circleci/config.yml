@@ -38,7 +38,18 @@ jobs:
           name: code_check_and_linting
           # This assumes pytest is installed via the install-package step above
           command: pre-commit run -a --hook-stage manual
-
+  run-pytest:
+    docker:
+      - image: cimg/python:3.8
+    steps:
+      - checkout
+      - python/install-packages:
+          pkg-manager: pip
+          app-dir: .circleci/ # If you're requirements.txt isn't in the root directory.
+          pip-dependency-file: requirements-cicd.txt
+      - run:
+          name: code_pytest_and_coverage
+          command: coverage run -m pytest
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
@@ -46,3 +57,4 @@ workflows:
     # Inside the workflow, you define the jobs you want to run.
     jobs:
       - build-and-test
+      - run-pytest
