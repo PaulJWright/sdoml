@@ -1,7 +1,7 @@
 .. _dataloader:
 
 =================================
-Dataloader (``sdoml.dataloader``)
+Dataloader (``sdoml.SDOMLDataset``)
 =================================
 
 .. toctree::
