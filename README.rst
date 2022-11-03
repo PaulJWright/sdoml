@@ -46,6 +46,14 @@ After install, you may need to run the following commands:
   gcloud init
   gcloud auth application-default login
 
+
+pytest and coverage
+-------------------
+
+```
+coverage run -m pytest
+```
+
 License
 -------
 
