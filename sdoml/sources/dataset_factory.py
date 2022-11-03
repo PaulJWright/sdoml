@@ -67,7 +67,7 @@ class DataSourceFactory(BasicRegistrationFactory):
             )
             new_data.append(new_datum)
         except (NoMatchError, MultipleMatchError) as e:
-            print(f"One of the data sources failed to validate with: {e}")
+            raise e
 
         if len(new_data) == 1:
             return new_data[0]
@@ -90,7 +90,7 @@ class DataSourceFactory(BasicRegistrationFactory):
         if num_matches == 0:
             if self.default_widget_type is None:
                 raise NoMatchError(
-                    "No candidate types identified from the specified arguements, and no default is set"
+                    "No candidate types identified from the specified arguments, and no default is set"
                 )
             else:
                 # the default_widget_type is set when calling the DataSourceFactory
