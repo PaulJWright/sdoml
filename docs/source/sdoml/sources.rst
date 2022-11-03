@@ -48,7 +48,6 @@ The ``DataSource`` objects should be assigned in a `List`, e.g. ``datasource_arr
 This ``List[DataSource]`` can be passed to the ``sdoml.dataloader.SDOMLDataset`` class, as discussed in
 :doc:`dataloader`.
 
-
    >>> from sdoml.sources import DataSource
    >>> data_to_load = {
    ...    "HMI": {

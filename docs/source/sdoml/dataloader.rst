@@ -28,15 +28,25 @@ Example
 
 If the user wishes to load HMI (Bx, By, Bz), AIA (94 Å, 131 Å), and EVE (O V, Fe XI) from the year 2010,
 :py:meth:`~sdoml.dataloader.SDOMLDataset` can be called as follows, where the
-creation of ``datasource_arr`` was described in :doc:`sources`.
+creation of ``datasource_arr`` was described in :doc:`sources` (but reproduced minimally using SDO/EVE for clarity)
 
 .. code-block:: python
 
+   >>> import torch
    >>> from sdoml import SDOMLDataset
+   >>> from sdoml.sources import DataSource
+   >>> datasource = DataSource(
+   ...     instrument="EVE",
+   ...     meta={
+   ...         "storage_location": "gcs",
+   ...         "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
+   ...         "channels": ["O V", "Fe XI"],
+   ...     }
+   ... )
    >>> sdomlds = SDOMLDataset(
    ...    cache_max_size=1 * 512 * 512 * 4096,
    ...    years=["2010"],
-   ...    data_to_load=datasource_arr, # this is a List[``sdo.sources.DataSource``]
+   ...    data_to_load=[datasource], # this is a List[``sdo.sources.DataSource``]
    ... )
    >>> dataloader = torch.utils.data.DataLoader(
    ...    sdomlds,
@@ -44,11 +54,11 @@ creation of ``datasource_arr`` was described in :doc:`sources`.
    ...    shuffle=False,
    ... )
 
-For detailed examples see, :doc:`examples/index`.
+For more examples see, :doc:`examples/index`.
 
 .. note::
 
    If caching is implemented, the second request on an index will be quicker. e.g.:
 
-   >>> first ``sdomlds.__getitem__(0)`` request took 69.02 seconds
-   >>> second ``sdomlds.__getitem__(0)`` request took 0.54 seconds
+   >>> first ``sdomlds.__getitem__(0)`` request took 69.02 seconds  # doctest: +SKIP
+   >>> second ``sdomlds.__getitem__(0)`` request took 0.54 seconds  # doctest: +SKIP
