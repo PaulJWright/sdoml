@@ -60,5 +60,14 @@ For more examples see, :doc:`examples/index`.
 
    If caching is implemented, the second request on an index will be quicker. e.g.:
 
-   >>> first ``sdomlds.__getitem__(0)`` request took 69.02 seconds  # doctest: +SKIP
-   >>> second ``sdomlds.__getitem__(0)`` request took 0.54 seconds  # doctest: +SKIP
+.. code-block:: python
+
+   >>> for i in ["first", "second"]:  # doctest: +SKIP
+   ...    start = timeit.default_timer()
+   ...    _ = sdomlds.__getitem__(0)
+   ...    end = timeit.default_timer()
+   ...    logger.info(
+   ...       f"{i} ``sdomlds.__getitem__(0)`` request took {end-start} seconds"
+   ...    )
+   first ``sdomlds.__getitem__(0)`` request took 69.02 seconds  # doctest: +SKIP
+   second ``sdomlds.__getitem__(0)`` request took 0.54 seconds  # doctest: +SKIP

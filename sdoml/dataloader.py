@@ -27,6 +27,14 @@ class SDOMLDataset(Dataset):
     Parameters
     ----------
 
+    data_to_load : List[:py:meth:`~sdoml.sources.DataSource`]
+        A list of :py:meth:`~sdoml.sources.DataSource` objects
+
+    freq : Optional[Union[str, None]]
+        A string representing the frequency at which data should be obtained.
+        See https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
+        for a list of frequency aliases. By default this is ``120T`` (120 minutes)
+
     cache_max_size : Optional[Union[int, None]]
         The maximum size that the ``zarr`` cache may grow to,
         in number of bytes. By default this variable is 1 * 512 * 512 * 2048.
@@ -36,14 +44,6 @@ class SDOMLDataset(Dataset):
     years : Optional[Union[List[str], None]]
         A list of years to include. By default this
         variable is ``2010`` which will return data for 2010 only.
-
-    freq : Optional[Union[str, None]]
-        A string representing the frequency at which data should be obtained.
-        See https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
-        for a list of frequency aliases. By default this is ``120T`` (120 minutes)
-
-    data_to_load : List[:py:meth:`~sdoml.sources.DataSource`]
-        A list of :py:meth:`~sdoml.sources.DataSource` objects
 
     Example
     -------
@@ -85,10 +85,10 @@ class SDOMLDataset(Dataset):
 
     def __init__(
         self,
+        data_to_load: List[DataSource],
+        freq: str = "120T",
         cache_max_size: Optional[int] = 1 * 512 * 512 * 2048,
         years: Optional[List[str]] = None,
-        freq: str = "120T",
-        data_to_load: List[DataSource] = None,
     ):
 
         # !TODO implement passing of ``selected_times`` and ``required_keys``
@@ -97,6 +97,10 @@ class SDOMLDataset(Dataset):
 
         if years is None:
             years = ["2010"]
+
+        # !TODO check data_to_load is a list
+        if type(data_to_load) is not list:
+            raise TypeError("``data_to_load`` is not a list")
 
         self._cache_max_size = cache_max_size
         self._single_cache_max_size = self._cache_max_size / len(data_to_load)
@@ -109,14 +113,7 @@ class SDOMLDataset(Dataset):
             for item in data_to_load
         ]
 
-        # instantiate the appropriate classes
-        data_arr = data_to_load  # !TODO remove before MR
-        # data_arr = [
-        #     DataSource(k, v, self._years, self._single_cache_max_size)
-        #     for k, v in data_to_load.items()
-        # ]
-
-        for datum in data_arr:
+        for datum in data_to_load:
             # !TODO change this to use methods
             datum._requested_years = self._years
             datum._cache_size = self._single_cache_max_size
@@ -138,21 +135,21 @@ class SDOMLDataset(Dataset):
             columns=["selected_times"],
         )
 
-        for darr in data_arr:
+        for darr in data_to_load:
             darr.set_years_channels()
             darr.load_data_meta()
 
         self._loaded_data, self._loaded_meta, _ = zip(
-            *[darr.data_meta_time for darr in data_arr]
+            *[darr.data_meta_time for darr in data_to_load]
         )
 
-        self._channels = [darr.available_channels for darr in data_arr]
+        self._channels = [darr.available_channels for darr in data_to_load]
 
         # Go through the time component of the loaded_data,
         # match to ``_df.selected_times``, and delete any rows that have NaN.
         # Doing this (especially when data is ordered by cadence) reduces
         # the number of potential matches for the next set of data.
-        for i, darr in enumerate(data_arr):
+        for i, darr in enumerate(data_to_load):
             if i == 0:
                 self._df = darr.get_cotemporal_indices(_df, "selected_times")
             else:
@@ -360,14 +357,14 @@ if __name__ == "__main__":
         },  # 1 minute candece
     }
 
-    data_arr = [
+    data_to_load = [
         DataSource(instrument=k, meta=v) for k, v in data_to_load.items()
     ]
 
     sdomlds = SDOMLDataset(
         cache_max_size=1 * 512 * 512 * 4096,
         years=["2010", "2011"],
-        data_to_load=data_arr,
+        data_to_load=data_to_load,
     )
 
     end = timeit.default_timer()
