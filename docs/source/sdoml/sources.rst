@@ -72,7 +72,7 @@ Writing a new DataSource class
 A subclass of :py:meth:`~sdoml.sources.data_base.GenericDataSource` with the
 ``datasource`` method, will be registered with the
 :py:meth:`~sdoml.sources.DataSource` factory. An example of the `datasource`
-method, for :py:meth:`~sdoml.sources.sdoml_gcs.SDOML_AIA` is shown below:
+method, for :py:meth:`~sdoml.sources.sdoml_cloud.SDOML_AIA` is shown below:
 
 .. code-block:: python
 
@@ -90,8 +90,7 @@ method, for :py:meth:`~sdoml.sources.sdoml_gcs.SDOML_AIA` is shown below:
       )
 
 where upon instantiation of the :py:meth:`~sdoml.sources.DataSource`,
-if the instrument name is  ``aia``, the storage location ``gcs``, and the
-``.zarr`` file, ``sdomlv2_small.zarr``, :py:meth:`~sdoml.sources.sdoml_gcs.SDOML_AIA`
+if the instrument name is  ``aia``, :py:meth:`~sdoml.sources.sdoml_cloud.SDOML_AIA`
 will be instantiated.
 
 In addition to the ``datasource`` method, the following attributes
