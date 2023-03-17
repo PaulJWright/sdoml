@@ -5,49 +5,88 @@ A set of utility functions
 import os
 from typing import List, Optional, Tuple, Union
 
-import gcsfs
 import numpy as np
+import s3fs
 import zarr
 
 __all__ = [
-    "gcs_conn",
-    "load_single_gcs_zarr",
-    "inspect_single_gcs_zarr",
+    # "gcs_connection",
+    "s3_connection",
+    "load_single_aws_zarr",
+    "inspect_single_aws_zarr",
     "load_single_zarr",
     "inspect_single_zarr",
+    "is_str_list",
+    "get_minvalue",
+    "solve_list",
 ]
 
 
-def gcs_conn(path_to_zarr: os.path) -> gcsfs.GCSMap:
+def s3_connection(path_to_zarr: os.path) -> s3fs.S3Map:
     """
-    Instantiate connection to gcs for a given path ``ptz``
+    Instantiate connection to aws for a given path ``path_to_zarr``
     """
-    return gcsfs.GCSMap(
-        path_to_zarr,
-        gcs=gcsfs.GCSFileSystem(access="read_only"),
-        check=False,
+
+    return s3fs.S3Map(
+        root=path_to_zarr, s3=s3fs.S3FileSystem(anon=False), check=False
     )
 
 
-def load_single_gcs_zarr(
+def load_single_aws_zarr(
     path_to_zarr: os.path,
     cache_max_single_size: int = None,
 ) -> Union[zarr.Array, zarr.Group]:
-    """load zarr from gcs using LRU cache"""
+    """load zarr from s3 using LRU cache"""
     return zarr.open(
         zarr.LRUStoreCache(
-            store=gcs_conn(path_to_zarr),
+            store=s3_connection(path_to_zarr),
             max_size=cache_max_single_size,
         ),
         mode="r",
     )
 
 
-def inspect_single_gcs_zarr(
+def inspect_single_aws_zarr(
     path_to_zarr: os.path,
 ) -> Union[zarr.Array, zarr.Group]:
-    """load zarr from gcs *without* using cache"""
-    return zarr.open(store=gcs_conn(path_to_zarr), mode="r")
+    """load zarr from s3 *without* using cache"""
+    return zarr.open(store=s3_connection(path_to_zarr), mode="r")
+
+
+# -- Removed for now
+
+# def gcs_connection(path_to_zarr: os.path) -> gcsfs.GCSMap:
+#     """
+#     Instantiate connection to gcs for a given path ``path_to_zarr``
+#     """
+#     import gcsfs
+
+#     return gcsfs.GCSMap(
+#         root=path_to_zarr,
+#         gcs=gcsfs.GCSFileSystem(access="read_only"),
+#         check=False,
+#     )
+
+
+# def load_single_gcs_zarr(
+#     path_to_zarr: os.path,
+#     cache_max_single_size: int = None,
+# ) -> Union[zarr.Array, zarr.Group]:
+#     """load zarr from gcs using LRU cache"""
+#     return zarr.open(
+#         zarr.LRUStoreCache(
+#             store=gcs_connection(path_to_zarr),
+#             max_size=cache_max_single_size,
+#         ),
+#         mode="r",
+#     )
+
+
+# def inspect_single_gcs_zarr(
+#     path_to_zarr: os.path,
+# ) -> Union[zarr.Array, zarr.Group]:
+#     """load zarr from gcs *without* using cache"""
+#     return zarr.open(store=gcs_connection(path_to_zarr), mode="r")
 
 
 def load_single_zarr(
@@ -55,7 +94,7 @@ def load_single_zarr(
     path_to_zarr: os.path,
     # cache_max_single_size: int = None,
 ) -> Union[zarr.Array, zarr.Group]:
-    """load zarr from gcs using LRU cache"""
+    """load zarr using LRU cache"""
     return zarr.open(
         store=path_to_zarr,
         mode="r",
@@ -65,7 +104,7 @@ def load_single_zarr(
 def inspect_single_zarr(
     path_to_zarr: os.path,
 ) -> Union[zarr.Array, zarr.Group]:
-    """load zarr from gcs *without* using cache"""
+    """load zarr *without* using cache"""
     return zarr.open(store=path_to_zarr, mode="r")
 
 

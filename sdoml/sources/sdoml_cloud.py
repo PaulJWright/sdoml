@@ -13,9 +13,9 @@ import numpy as np
 import pandas as pd
 
 from sdoml.sources.data_base import GenericDataSource
-from sdoml.utils.utils import (
-    inspect_single_gcs_zarr,
-    load_single_gcs_zarr,
+from sdoml.utils.utils import (  # inspect_single_gcs_zarr,; load_single_gcs_zarr,
+    inspect_single_aws_zarr,
+    load_single_aws_zarr,
     solve_list,
 )
 
@@ -87,7 +87,7 @@ class SDOML_AIA_GCS(GenericDataSource):
                 path_to_data = os.path.join(self._meta["root"], year, channel)
 
                 try:
-                    _ = inspect_single_gcs_zarr(path_to_data)
+                    _ = inspect_single_aws_zarr(path_to_data)
 
                     if i == 0:
                         try:
@@ -151,7 +151,7 @@ class SDOML_AIA_GCS(GenericDataSource):
         by_year, meta_yr = [], []
         for yr in self._available_years:
             data = [
-                load_single_gcs_zarr(
+                load_single_aws_zarr(
                     path_to_zarr=os.path.join(self._meta["root"], yr, ch),
                     cache_max_single_size=self._cache_size,
                 )
@@ -181,9 +181,10 @@ class SDOML_AIA_GCS(GenericDataSource):
         of this child class
         """
         return (
-            instrument.lower() == "aia"
-            and str(meta["storage_location"]).lower() == "gcs"
-            and Path(str(meta["root"])).name == "sdomlv2_small.zarr"
+            instrument.lower()
+            == "aia"
+            # and str(meta["storage_location"]).lower() == "gcs"
+            # and Path(str(meta["root"])).name == "sdomlv2_small.zarr"
         )
 
 
@@ -224,9 +225,10 @@ class SDOML_HMI_GCS(SDOML_AIA_GCS):
         of this child class
         """
         return (
-            instrument.lower() == "hmi"
-            and str(meta["storage_location"]).lower() == "gcs"
-            and Path(str(meta["root"])).name == "sdomlv2_hmi_small.zarr"
+            instrument.lower()
+            == "hmi"
+            # and str(meta["storage_location"]).lower() == "gcs"
+            # and Path(str(meta["root"])).name == "sdomlv2_hmi_small.zarr"
         )
 
 
@@ -281,7 +283,7 @@ class SDOML_EVE_GCS(GenericDataSource):
         for channel in self._meta["channels"]:
             path_to_data = os.path.join(self._meta["root"], "MEGS-A", channel)
             try:
-                _ = inspect_single_gcs_zarr(path_to_data)  # check if exists
+                _ = inspect_single_aws_zarr(path_to_data)  # check if exists
                 yc_dict["all"].append(channel)
             except Exception:
                 logging.warning(f"Cannot find ``{path_to_data}``")
@@ -316,7 +318,7 @@ class SDOML_EVE_GCS(GenericDataSource):
             raise ValueError("``self._cache_size`` is None")
 
         loaded_data = [
-            load_single_gcs_zarr(
+            load_single_aws_zarr(
                 os.path.join(self._meta["root"], "MEGS-A", ch),
                 cache_max_single_size=self._cache_size,
             )
@@ -339,7 +341,7 @@ class SDOML_EVE_GCS(GenericDataSource):
 
         time_yr = np.array(
             [
-                load_single_gcs_zarr(
+                load_single_aws_zarr(
                     os.path.join(self._meta["root"], "MEGS-A", "Time"),
                     cache_max_single_size=self._cache_size,
                 )
@@ -399,7 +401,8 @@ class SDOML_EVE_GCS(GenericDataSource):
         of this child class
         """
         return (
-            instrument.lower() == "eve"
-            and str(meta["storage_location"]).lower() == "gcs"
-            and Path(str(meta["root"])).name == "sdomlv2_eve.zarr"
+            instrument.lower()
+            == "eve"
+            # and str(meta["storage_location"]).lower() == "gcs"
+            # and Path(str(meta["root"])).name == "sdomlv2_eve.zarr"
         )
