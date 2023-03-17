@@ -28,7 +28,10 @@ def s3_connection(path_to_zarr: os.path) -> s3fs.S3Map:
     """
 
     return s3fs.S3Map(
-        root=path_to_zarr, s3=s3fs.S3FileSystem(anon=False), check=False
+        root=path_to_zarr,
+        s3=s3fs.S3FileSystem(anon=True),
+        # anonymous access requires no credentials
+        check=False,
     )
 
 

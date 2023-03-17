@@ -54,11 +54,11 @@ class SDOMLDataset(Dataset):
 
     >>> data_to_load = {
     ...     "HMI": {
-    ...         "root": "gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2.zarr/",
+    ...         "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
     ...         "channels": ["Bx", "By", "Bz"],
     ...     },
     ...     "AIA": {
-    ...         "root": "gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2.zarr/",
+    ...         "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_small.zarr/",
     ...         "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
     ...     },
     ... }
