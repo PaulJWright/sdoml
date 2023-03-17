@@ -22,13 +22,13 @@ from sdoml.utils.utils import (  # inspect_single_gcs_zarr,; load_single_gcs_zar
 # from Python 3.9+, use dict, list, tuple; see PEP 585
 
 
-__all__ = ["SDOML_AIA_GCS", "SDOML_HMI_GCS", "SDOML_EVE_GCS"]
+__all__ = ["SDOML_AIA", "SDOML_HMI", "SDOML_EVE"]
 
 # MEGS-A is depreacated; these years are a constant.
 EVE_MEGSA_YEARS = ["2010", "2011", "2012", "2014"]
 
 
-class SDOML_AIA_GCS(GenericDataSource):
+class SDOML_AIA(GenericDataSource):
     """
     Data class for SDO/AIA located on GCS under the ``fdl-sdoml-v2`` bucket.
 
@@ -188,7 +188,7 @@ class SDOML_AIA_GCS(GenericDataSource):
         )
 
 
-class SDOML_HMI_GCS(SDOML_AIA_GCS):
+class SDOML_HMI(SDOML_AIA):
     """
     Data class for SDO/HMI located on GCS under the ``fdl-sdoml-v2`` bucket.
     As ``SDOAIA_gcs`` with ``self._time_format`` where the data is stored in
@@ -232,7 +232,7 @@ class SDOML_HMI_GCS(SDOML_AIA_GCS):
         )
 
 
-class SDOML_EVE_GCS(GenericDataSource):
+class SDOML_EVE(GenericDataSource):
     """
     Data class for SDO/EVE(MEGS-A) located on GCS under the ``fdl-sdoml-v2``
     bucket. As ``SDOAIA_gcs`` with ``self._time_format`` where the data is
