@@ -61,7 +61,6 @@ class GenericDataSource(ABC):
         meta: Dict,
         **kwargs,
     ) -> None:
-
         # want to do checks here...
         self._instrument = instrument
         self._meta = meta

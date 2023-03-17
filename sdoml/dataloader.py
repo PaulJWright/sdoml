@@ -90,7 +90,6 @@ class SDOMLDataset(Dataset):
         freq: str = "120T",
         data_to_load: List[DataSource] = None,
     ):
-
         # !TODO implement passing of ``selected_times`` and ``required_keys``
         selected_times = None
         # required_keys = None
@@ -240,7 +239,6 @@ class SDOMLDataset(Dataset):
             concat_data = []
             # iterate through years
             for idx in range(len(channel_name)):
-
                 im_ = da.concatenate(
                     [inst[j][idx] for j in range(len(inst))], axis=0
                 )
@@ -330,7 +328,6 @@ class SDOMLDataset(Dataset):
 
 
 if __name__ == "__main__":
-
     import timeit
 
     s = timeit.default_timer()

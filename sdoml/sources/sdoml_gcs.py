@@ -357,7 +357,6 @@ class SDOML_EVE_GCS(GenericDataSource):
         column_name: str,
         time_delta: str = "3m",
     ) -> pd.DataFrame:
-
         """
         Returns a ``pd.DataFrame`` with co-temporal EVE data for
         ``self._available_channels``.
