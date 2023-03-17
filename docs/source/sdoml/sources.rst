@@ -26,7 +26,7 @@ The available set of DataSource objects that can be instantiated by
 :py:meth:`~sdoml.sources.DataSource` are as described below,
 with an accompanying inheritance diagram.
 
-.. automodapi:: sdoml.sources.sdoml_gcs
+.. automodapi:: sdoml.sources.sdoml_cloud
    :no-heading:
    :inheritance-diagram:
    :no-main-docstr:
@@ -52,18 +52,15 @@ This ``List[DataSource]`` can be passed to the ``sdoml.dataloader.SDOMLDataset``
    >>> from sdoml.sources import DataSource
    >>> data_to_load = {
    ...    "HMI": {
-   ...          "storage_location": "gcs",
-   ...          "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
+   ...          "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
    ...          "channels": ["Bx", "By", "Bz"],
    ...    },
    ...    "AIA": {
-   ...          "storage_location": "gcs",
-   ...          "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
+   ...          "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_small.zarr/",
    ...          "channels": ["94A", "131A"],
    ...    },
    ...    "EVE": {
-   ...          "storage_location": "gcs",
-   ...          "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
+   ...          "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_eve.zarr/",
    ...          "channels": ["O V", "Fe XI"],
    ...    },
    ... }
@@ -75,7 +72,7 @@ Writing a new DataSource class
 A subclass of :py:meth:`~sdoml.sources.data_base.GenericDataSource` with the
 ``datasource`` method, will be registered with the
 :py:meth:`~sdoml.sources.DataSource` factory. An example of the `datasource`
-method, for :py:meth:`~sdoml.sources.sdoml_gcs.SDOML_AIA_GCS` is shown below:
+method, for :py:meth:`~sdoml.sources.sdoml_cloud.SDOML_AIA` is shown below:
 
 .. code-block:: python
 
@@ -88,13 +85,12 @@ method, for :py:meth:`~sdoml.sources.sdoml_gcs.SDOML_AIA_GCS` is shown below:
       """
       return (
          instrument.lower() == "aia"
-         and str(meta["storage_location"]).lower() == "gcs"
-         and Path(str(meta["root"])).name == "sdomlv2_small.zarr"
+         # and str(meta["storage_location"]).lower() == "gcs"
+         # and Path(str(meta["root"])).name == "sdomlv2_small.zarr"
       )
 
 where upon instantiation of the :py:meth:`~sdoml.sources.DataSource`,
-if the instrument name is  ``aia``, the storage location ``gcs``, and the
-``.zarr`` file, ``sdomlv2_small.zarr``, :py:meth:`~sdoml.sources.sdoml_gcs.SDOML_AIA_GCS`
+if the instrument name is  ``aia``, :py:meth:`~sdoml.sources.sdoml_cloud.SDOML_AIA`
 will be instantiated.
 
 In addition to the ``datasource`` method, the following attributes

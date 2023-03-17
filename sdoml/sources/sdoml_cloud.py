@@ -1,5 +1,5 @@
 """
-Subclass for the SDOML Dataset (v2+) hosted on gcs
+Subclass for the SDOML Dataset (v2+) hosted on aws
 """
 
 import logging
@@ -13,24 +13,24 @@ import numpy as np
 import pandas as pd
 
 from sdoml.sources.data_base import GenericDataSource
-from sdoml.utils.utils import (
-    inspect_single_gcs_zarr,
-    load_single_gcs_zarr,
+from sdoml.utils.utils import (  # inspect_single_gcs_zarr,; load_single_gcs_zarr,
+    inspect_single_aws_zarr,
+    load_single_aws_zarr,
     solve_list,
 )
 
 # from Python 3.9+, use dict, list, tuple; see PEP 585
 
 
-__all__ = ["SDOML_AIA_GCS", "SDOML_HMI_GCS", "SDOML_EVE_GCS"]
+__all__ = ["SDOML_AIA", "SDOML_HMI", "SDOML_EVE"]
 
 # MEGS-A is depreacated; these years are a constant.
 EVE_MEGSA_YEARS = ["2010", "2011", "2012", "2014"]
 
 
-class SDOML_AIA_GCS(GenericDataSource):
+class SDOML_AIA(GenericDataSource):
     """
-    Data class for SDO/AIA located on GCS under the ``fdl-sdoml-v2`` bucket.
+    Data class for SDO/AIA located on AWS s3 under the ``fdl-sdoml-v2`` bucket.
 
     The data is stored as a ``zarr.hierarchy.Group``, e.g.:
 
@@ -87,7 +87,7 @@ class SDOML_AIA_GCS(GenericDataSource):
                 path_to_data = os.path.join(self._meta["root"], year, channel)
 
                 try:
-                    _ = inspect_single_gcs_zarr(path_to_data)
+                    _ = inspect_single_aws_zarr(path_to_data)
 
                     if i == 0:
                         try:
@@ -121,7 +121,7 @@ class SDOML_AIA_GCS(GenericDataSource):
 
     def load_data_meta(self) -> None:
         """
-        Loads SDO/AIA data from the ``.zarr`` file on GCS
+        Loads SDO/AIA data from the ``.zarr`` file on AWS s3
 
         This method should set:
 
@@ -151,7 +151,7 @@ class SDOML_AIA_GCS(GenericDataSource):
         by_year, meta_yr = [], []
         for yr in self._available_years:
             data = [
-                load_single_gcs_zarr(
+                load_single_aws_zarr(
                     path_to_zarr=os.path.join(self._meta["root"], yr, ch),
                     cache_max_single_size=self._cache_size,
                 )
@@ -181,19 +181,20 @@ class SDOML_AIA_GCS(GenericDataSource):
         of this child class
         """
         return (
-            instrument.lower() == "aia"
-            and str(meta["storage_location"]).lower() == "gcs"
-            and Path(str(meta["root"])).name == "sdomlv2_small.zarr"
+            instrument.lower()
+            == "aia"
+            # and str(meta["storage_location"]).lower() == "gcs"
+            # and Path(str(meta["root"])).name == "sdomlv2_small.zarr"
         )
 
 
-class SDOML_HMI_GCS(SDOML_AIA_GCS):
+class SDOML_HMI(SDOML_AIA):
     """
-    Data class for SDO/HMI located on GCS under the ``fdl-sdoml-v2`` bucket.
-    As ``SDOAIA_gcs`` with ``self._time_format`` where the data is stored in
+    Data class for SDO/HMI located on AWS s3 under the ``fdl-sdoml-v2`` bucket.
+    As ``SDOML_AIA`` with ``self._time_format`` where the data is stored in
     the time format: ``%Y.%m.%d_%H:%M:%S_TAI``
 
-    As with SDOAIA_gcs, the data is stored as a ``zarr.hierarchy.Group``, e.g.:
+    As with SDOML_AIA, the data is stored as a ``zarr.hierarchy.Group``, e.g.:
 
     .. code-block:: bash
 
@@ -224,16 +225,17 @@ class SDOML_HMI_GCS(SDOML_AIA_GCS):
         of this child class
         """
         return (
-            instrument.lower() == "hmi"
-            and str(meta["storage_location"]).lower() == "gcs"
-            and Path(str(meta["root"])).name == "sdomlv2_hmi_small.zarr"
+            instrument.lower()
+            == "hmi"
+            # and str(meta["storage_location"]).lower() == "gcs"
+            # and Path(str(meta["root"])).name == "sdomlv2_hmi_small.zarr"
         )
 
 
-class SDOML_EVE_GCS(GenericDataSource):
+class SDOML_EVE(GenericDataSource):
     """
-    Data class for SDO/EVE(MEGS-A) located on GCS under the ``fdl-sdoml-v2``
-    bucket. As ``SDOAIA_gcs`` with ``self._time_format`` where the data is
+    Data class for SDO/EVE(MEGS-A) located on AWS s3 under the ``fdl-sdoml-v2``
+    bucket. As ``SDOML_AIA`` with ``self._time_format`` where the data is
     stored in the time format: ``%Y.%m.%d_%H:%M:%S_TAI``
 
     The data is stored as a ``zarr.hierarchy.Group``:
@@ -281,7 +283,7 @@ class SDOML_EVE_GCS(GenericDataSource):
         for channel in self._meta["channels"]:
             path_to_data = os.path.join(self._meta["root"], "MEGS-A", channel)
             try:
-                _ = inspect_single_gcs_zarr(path_to_data)  # check if exists
+                _ = inspect_single_aws_zarr(path_to_data)  # check if exists
                 yc_dict["all"].append(channel)
             except Exception:
                 logging.warning(f"Cannot find ``{path_to_data}``")
@@ -295,7 +297,7 @@ class SDOML_EVE_GCS(GenericDataSource):
 
     def load_data_meta(self) -> None:
         """
-        Load SDO/EVE data from the ``.zarr`` file on GCS, return.
+        Load SDO/EVE data from the ``.zarr`` file on AWS s3, return.
 
         This method should set:
 
@@ -316,7 +318,7 @@ class SDOML_EVE_GCS(GenericDataSource):
             raise ValueError("``self._cache_size`` is None")
 
         loaded_data = [
-            load_single_gcs_zarr(
+            load_single_aws_zarr(
                 os.path.join(self._meta["root"], "MEGS-A", ch),
                 cache_max_single_size=self._cache_size,
             )
@@ -339,7 +341,7 @@ class SDOML_EVE_GCS(GenericDataSource):
 
         time_yr = np.array(
             [
-                load_single_gcs_zarr(
+                load_single_aws_zarr(
                     os.path.join(self._meta["root"], "MEGS-A", "Time"),
                     cache_max_single_size=self._cache_size,
                 )
@@ -399,7 +401,8 @@ class SDOML_EVE_GCS(GenericDataSource):
         of this child class
         """
         return (
-            instrument.lower() == "eve"
-            and str(meta["storage_location"]).lower() == "gcs"
-            and Path(str(meta["root"])).name == "sdomlv2_eve.zarr"
+            instrument.lower()
+            == "eve"
+            # and str(meta["storage_location"]).lower() == "gcs"
+            # and Path(str(meta["root"])).name == "sdomlv2_eve.zarr"
         )
