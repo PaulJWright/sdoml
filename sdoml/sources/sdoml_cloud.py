@@ -30,7 +30,7 @@ EVE_MEGSA_YEARS = ["2010", "2011", "2012", "2014"]
 
 class SDOML_AIA(GenericDataSource):
     """
-    Data class for SDO/AIA located on GCS under the ``fdl-sdoml-v2`` bucket.
+    Data class for SDO/AIA located on AWS s3 under the ``fdl-sdoml-v2`` bucket.
 
     The data is stored as a ``zarr.hierarchy.Group``, e.g.:
 
@@ -121,7 +121,7 @@ class SDOML_AIA(GenericDataSource):
 
     def load_data_meta(self) -> None:
         """
-        Loads SDO/AIA data from the ``.zarr`` file on GCS
+        Loads SDO/AIA data from the ``.zarr`` file on AWS s3
 
         This method should set:
 
@@ -190,7 +190,7 @@ class SDOML_AIA(GenericDataSource):
 
 class SDOML_HMI(SDOML_AIA):
     """
-    Data class for SDO/HMI located on GCS under the ``fdl-sdoml-v2`` bucket.
+    Data class for SDO/HMI located on AWS s3 under the ``fdl-sdoml-v2`` bucket.
     As ``SDOML_AIA`` with ``self._time_format`` where the data is stored in
     the time format: ``%Y.%m.%d_%H:%M:%S_TAI``
 
@@ -234,8 +234,8 @@ class SDOML_HMI(SDOML_AIA):
 
 class SDOML_EVE(GenericDataSource):
     """
-    Data class for SDO/EVE(MEGS-A) located on GCS under the ``fdl-sdoml-v2``
-    bucket. As ``SDOAIA_gcs`` with ``self._time_format`` where the data is
+    Data class for SDO/EVE(MEGS-A) located on AWS s3 under the ``fdl-sdoml-v2``
+    bucket. As ``SDOML_AIA`` with ``self._time_format`` where the data is
     stored in the time format: ``%Y.%m.%d_%H:%M:%S_TAI``
 
     The data is stored as a ``zarr.hierarchy.Group``:
@@ -297,7 +297,7 @@ class SDOML_EVE(GenericDataSource):
 
     def load_data_meta(self) -> None:
         """
-        Load SDO/EVE data from the ``.zarr`` file on GCS, return.
+        Load SDO/EVE data from the ``.zarr`` file on AWS s3, return.
 
         This method should set:
 
