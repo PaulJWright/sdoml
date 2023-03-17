@@ -20,8 +20,8 @@ class. e.g.:
     self._meta_by_year : List
     self._time_by_year : np.ndarray
 
-For examples surrounding the SDOML v2+ dataset on Google Cloud Storage,
-see :py:meth:`~sdoml.sources.sdoml_gcs`.
+For examples surrounding the SDOML v2+ dataset on Amazon Web Services,
+see :py:meth:`~sdoml.sources.sdoml_aws`.
 """
 
 from .data_base import *

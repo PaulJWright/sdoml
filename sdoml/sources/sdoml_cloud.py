@@ -1,5 +1,5 @@
 """
-Subclass for the SDOML Dataset (v2+) hosted on gcs
+Subclass for the SDOML Dataset (v2+) hosted on aws
 """
 
 import logging
@@ -191,10 +191,10 @@ class SDOML_AIA(GenericDataSource):
 class SDOML_HMI(SDOML_AIA):
     """
     Data class for SDO/HMI located on GCS under the ``fdl-sdoml-v2`` bucket.
-    As ``SDOAIA_gcs`` with ``self._time_format`` where the data is stored in
+    As ``SDOML_AIA`` with ``self._time_format`` where the data is stored in
     the time format: ``%Y.%m.%d_%H:%M:%S_TAI``
 
-    As with SDOAIA_gcs, the data is stored as a ``zarr.hierarchy.Group``, e.g.:
+    As with SDOML_AIA, the data is stored as a ``zarr.hierarchy.Group``, e.g.:
 
     .. code-block:: bash
 
