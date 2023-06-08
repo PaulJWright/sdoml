@@ -54,13 +54,11 @@ class SDOMLDataset(Dataset):
 
     >>> data_to_load = {
     ...     "HMI": {
-    ...         "storage_location": "gcs",
-    ...         "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
+    ...         "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
     ...         "channels": ["Bx", "By", "Bz"],
     ...     },
     ...     "AIA": {
-    ...         "storage_location": "gcs",
-    ...         "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
+    ...         "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_small.zarr/",
     ...         "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
     ...     },
     ... }
@@ -90,7 +88,6 @@ class SDOMLDataset(Dataset):
         cache_max_size: Optional[int] = 1 * 512 * 512 * 2048,
         years: Optional[List[str]] = None,
     ):
-
         # !TODO implement passing of ``selected_times`` and ``required_keys``
         selected_times = None
         # required_keys = None
@@ -237,7 +234,6 @@ class SDOMLDataset(Dataset):
             concat_data = []
             # iterate through years
             for idx in range(len(channel_name)):
-
                 im_ = da.concatenate(
                     [inst[j][idx] for j in range(len(inst))], axis=0
                 )
@@ -327,7 +323,6 @@ class SDOMLDataset(Dataset):
 
 
 if __name__ == "__main__":
-
     import timeit
 
     s = timeit.default_timer()
@@ -341,18 +336,18 @@ if __name__ == "__main__":
 
     data_to_load = {
         "HMI": {
-            "storage_location": "gcs",
-            "root": "fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
+            "storage_location": "aws",
+            "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
             "channels": ["Bx", "By", "Bz"],
         },  # 12 minute cadence
         "AIA": {
-            "storage_location": "gcs",
-            "root": "fdl-sdoml-v2/sdomlv2_small.zarr/",
+            "storage_location": "aws",
+            "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_small.zarr/",
             "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
         },  # 6 minute cadence
         "EVE": {
-            "storage_location": "gcs",
-            "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
+            "storage_location": "aws",
+            "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_eve.zarr/",
             "channels": ["O V", "Mg X", "Fe XI"],
         },  # 1 minute candece
     }
