@@ -41,10 +41,9 @@ jobs:
       - image: cimg/python:3.8
     steps:
       - checkout
-      - python/install-packages:
-          pkg-manager: pip
-          app-dir: .circleci/ # If you're requirements.txt isn't in the root directory.
-          pip-dependency-file: requirements-cicd.txt
+      - run:
+          name: install_package
+          command: pip install -e .[test]
       - run:
           name: code_pytest_and_coverage
           command: coverage run -m pytest
