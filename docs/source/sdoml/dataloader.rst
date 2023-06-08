@@ -38,8 +38,8 @@ creation of ``datasource_arr`` was described in :doc:`sources` (but reproduced m
    >>> datasource = DataSource(
    ...     instrument="EVE",
    ...     meta={
-   ...         "storage_location": "gcs",
-   ...         "root": "fdl-sdoml-v2/sdomlv2_eve.zarr/",
+   ...         "storage_location": "aws",
+   ...         "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_eve.zarr/",
    ...         "channels": ["O V", "Fe XI"],
    ...     }
    ... )
