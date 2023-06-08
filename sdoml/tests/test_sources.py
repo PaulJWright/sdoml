@@ -1,11 +1,7 @@
 import pytest
 from sunpy.map.map_factory import MultipleMatchError, NoMatchError
 
-from sdoml.sources import (
-    SDOML_AIA,
-    SDOML_HMI,
-    DataSource,
-)
+from sdoml.sources import SDOML_AIA, SDOML_HMI, DataSource
 
 
 def test_sdoaiagcs_compliant():
