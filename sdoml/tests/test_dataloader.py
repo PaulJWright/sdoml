@@ -7,17 +7,17 @@ from sdoml.sources import DataSource
 data_to_load = {
     "HMI": {
         "storage_location": "aws",
-        "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
+        "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_hmi_small.zarr",
         "channels": ["Bx", "By", "Bz"],
     },  # 12 minute cadence
     "AIA": {
         "storage_location": "aws",
-        "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_small.zarr/",
+        "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_small.zarr",
         "channels": ["94A", "131A", "171A", "193A", "211A", "335A"],
     },  # 6 minute cadence
     "EVE": {
         "storage_location": "aws",
-        "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_eve.zarr/",
+        "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_eve.zarr",
         "channels": ["O V", "Mg X", "Fe XI"],
     },  # 1 minute candece
 }
@@ -35,21 +35,6 @@ def test_sdomldataset():
     )
 
     sdomlds.__getitem__(0)
-
-
-# def test_sdomldataset():
-#     import pandas as pd
-
-#     sdomlds = SDOMLDataset(
-#         cache_max_size=1 * 512 * 512 * 4096,
-#         years=["2010"],
-#         data_to_load=datasource_arr,
-#     )
-
-#     assert type(sdomlds.dataframe()) is pd.DataFrame
-#     sdomlds.all_data()
-#     sdomlds.all_meta()
-#     sdomlds.available_channels()
 
 
 def test_sdomldataset_noyears():
