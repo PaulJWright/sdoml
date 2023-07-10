@@ -1,6 +1,9 @@
 SDOML dataset
 ---------------------
 
+.. image:: https://codecov.io/gh/PaulJWright/sdoml/branch/develop/graph/badge.svg?token=FUURJWMEEU
+    :target: https://codecov.io/gh/PaulJWright/sdoml
+
 .. image:: https://readthedocs.org/projects/sdoml/badge/?version=latest
     :target: https://sdoml.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
@@ -53,7 +56,22 @@ pytest and coverage
 .. code:: python
 
   coverage run -m pytest
+  coverage html
 
+circleci
+--------
+
+You can run circleci locally (https://circleci.com/docs/local-cli/), with brew, for example:
+
+.. code:: zsh
+
+  brew install circleci
+
+and validate the file with
+
+.. code:: zsh
+
+  circleci config validate
 
 License
 -------
