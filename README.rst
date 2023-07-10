@@ -50,9 +50,10 @@ To install the optional extras required for testing, this can be performed with 
 pytest and coverage
 -------------------
 
-```
-coverage run -m pytest
-```
+.. code:: python
+
+  coverage run -m pytest
+
 
 License
 -------
