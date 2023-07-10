@@ -79,7 +79,9 @@ def load_single_gcs_zarr(
     path_to_zarr: os.path,
     cache_max_single_size: int = None,
 ) -> Union[zarr.Array, zarr.Group]:
-    """load zarr from gcs using LRU cache"""
+    """
+    load zarr from gcs using LRU cache
+    """
     return zarr.open(
         zarr.LRUStoreCache(
             store=gcs_connection(path_to_zarr),
@@ -116,12 +118,16 @@ def inspect_single_zarr(
 
 
 def is_str_list(val: List[object]) -> bool:
-    """Determines whether all objects in the list are strings"""
+    """
+    Determines whether all objects in the list are strings
+    """
     return all(isinstance(x, str) for x in val)
 
 
 def get_minvalue(inputlist: List) -> Tuple[float, int]:
-    """Function to return min. value and corresponding index"""
+    """
+    Function to return min. value and corresponding index
+    """
     # get the minimum value in the list
     min_value = min(inputlist)
     # return the index of minimum value
