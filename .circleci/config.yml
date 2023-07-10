@@ -40,6 +40,8 @@ jobs:
       - run:
           name: code_pytest_and_coverage
           command: coverage run -m pytest
+      # https://circleci.com/blog/making-code-coverage-easy-to-see-with-the-codecov-orb/
+      - codecov/upload
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -48,7 +50,3 @@ workflows:
     # Inside the workflow, you define the jobs you want to run.
     jobs:
       - build-and-test
-  upload-to-codecov:
-    jobs:
-      - checkout
-      - codecov/upload
