@@ -10,7 +10,7 @@ orbs:
   # so you dont have to copy and paste it everywhere.
   # See the orb documentation here: https://circleci.com/developer/orbs/orb/circleci/python
   python: circleci/python@2.1.1
-  codecov: codecov/codecov@3.2.4
+  codecov: codecov/codecov@3.2.5
 
 jobs:
   build-and-test: # This is the name of the job, feel free to change it to better match what you're trying to do!
@@ -48,4 +48,7 @@ workflows:
     # Inside the workflow, you define the jobs you want to run.
     jobs:
       - build-and-test
+  upload-to-codecov:
+    jobs:
+      - checkout
       - codecov/upload
