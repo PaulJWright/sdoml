@@ -51,15 +51,18 @@ This ``List[DataSource]`` can be passed to the ``sdoml.dataloader.SDOMLDataset``
    >>> from sdoml.sources import DataSource
    >>> data_to_load = {
    ...    "HMI": {
-   ...          "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_hmi_small.zarr/",
+   ...         "storage_location": "aws",
+   ...          "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_hmi_small.zarr",
    ...          "channels": ["Bx", "By", "Bz"],
    ...    },
    ...    "AIA": {
-   ...          "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_small.zarr/",
+   ...         "storage_location": "aws",
+   ...          "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_small.zarr",
    ...          "channels": ["94A", "131A"],
    ...    },
    ...    "EVE": {
-   ...          "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_eve.zarr/",
+   ...         "storage_location": "aws",
+   ...          "root": "s3://gov-nasa-hdrl-data1/contrib/fdl-sdoml/fdl-sdoml-v2/sdomlv2_eve.zarr",
    ...          "channels": ["O V", "Fe XI"],
    ...    },
    ... }
