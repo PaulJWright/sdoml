@@ -181,10 +181,9 @@ class SDOML_AIA(GenericDataSource):
         of this child class
         """
         return (
-            instrument.lower()
-            == "aia"
-            # and str(meta["storage_location"]).lower() == "gcs"
-            # and Path(str(meta["root"])).name == "sdomlv2_small.zarr"
+            instrument.lower() == "aia"
+            and str(meta["storage_location"]).lower() == "aws"
+            and Path(str(meta["root"])).suffix == ".zarr"
         )
 
 
@@ -225,10 +224,9 @@ class SDOML_HMI(SDOML_AIA):
         of this child class
         """
         return (
-            instrument.lower()
-            == "hmi"
-            # and str(meta["storage_location"]).lower() == "gcs"
-            # and Path(str(meta["root"])).name == "sdomlv2_hmi_small.zarr"
+            instrument.lower() == "hmi"
+            and str(meta["storage_location"]).lower() == "aws"
+            and Path(str(meta["root"])).suffix == ".zarr"
         )
 
 
@@ -401,8 +399,7 @@ class SDOML_EVE(GenericDataSource):
         of this child class
         """
         return (
-            instrument.lower()
-            == "eve"
-            # and str(meta["storage_location"]).lower() == "gcs"
-            # and Path(str(meta["root"])).name == "sdomlv2_eve.zarr"
+            instrument.lower() == "eve"
+            and str(meta["storage_location"]).lower() == "aws"
+            and Path(str(meta["root"])).suffix == ".zarr"
         )
